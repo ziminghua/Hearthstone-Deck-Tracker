@@ -287,6 +287,9 @@ namespace Hearthstone_Deck_Tracker
 		public bool FlashHsOnTurnStart = true;
 
 		[DefaultValue(false)]
+		public bool ForceLocalReplayViewer = false;
+
+		[DefaultValue(false)]
 		public bool ForceMouseHook = false;
 
 		[DefaultValue(false)]
