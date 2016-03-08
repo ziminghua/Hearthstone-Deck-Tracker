@@ -16,7 +16,24 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 {
 	internal class HsReplayConverter
 	{
+		private static readonly List<string> Converting = new List<string>();
+		private static int _fallbackIndex = 1;
+
 		public static async Task<string> Convert(List<string> log, GameStats stats, GameMetaData gameMetaData, bool includeDeck = false)
+		{
+			var id = gameMetaData?.GameId ?? stats?.GameId.ToString() ?? (_fallbackIndex++).ToString();
+			if(Converting.Contains(id))
+			{
+				Log.Error($"Converting {id} already in progress.");
+				return null;
+			}
+			Converting.Add(id);
+			var output = await ConvertInternal(log, stats, gameMetaData, includeDeck);
+			Converting.Remove(id);
+			return output;
+		}
+
+		private static async Task<string> ConvertInternal(List<string> log, GameStats stats, GameMetaData gameMetaData, bool includeDeck)
 		{
 			Log.Info($"Converting hsreplay, game={{{stats}}}");
 			if(!File.Exists(HsReplayExe))
