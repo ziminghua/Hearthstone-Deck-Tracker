@@ -152,6 +152,9 @@ namespace Hearthstone_Deck_Tracker
 			await _game.GameModeDetection();
 			Log.Info("Detected game mode, continuing.");
 
+			if(_game.StoredGameStats != null && _game.CurrentGameStats != null)
+				_game.CurrentGameStats.StartTime = _game.StoredGameStats.StartTime;
+
 			if(RecordCurrentGameMode && _game.CurrentGameStats != null)
 			{
 				var powerLog = new List<string>();
@@ -164,8 +167,6 @@ namespace Hearthstone_Deck_Tracker
 					HsReplayManager.ProcessPowerLog(powerLog, _game.CurrentGameStats, _game.MetaData, !_game.NoMatchingDeck).Forget();
 			}
 
-			if(_game.StoredGameStats != null && _game.CurrentGameStats != null)
-				_game.CurrentGameStats.StartTime = _game.StoredGameStats.StartTime;
 
 			SaveAndUpdateStats();
 
