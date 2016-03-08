@@ -50,22 +50,18 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 		public string RawLog { get; }
 		public string HsReplay { get; private set; }
 
-		public void StoreHsReplay(string filePath)
+		public void StoreHsReplay(string xml)
 		{
 			if(HasHsReplayFile)
 				return;
 			Log.Info($"Adding {HsReplayFile} to hdtrelay file.");
 			try
 			{
-				using(var sr = new StreamReader(filePath))
-				{
-					var hsreplay = sr.ReadToEnd();
-					using(var fs = new FileStream(FilePath, FileMode.Open))
-					using(var archive = new ZipArchive(fs, ZipArchiveMode.Update))
-					using(var sw = new StreamWriter(archive.CreateEntry(HsReplayFile).Open()))
-						sw.Write(hsreplay);
-					HsReplay = hsreplay;
-				}
+				using(var fs = new FileStream(FilePath, FileMode.Open))
+				using(var archive = new ZipArchive(fs, ZipArchiveMode.Update))
+				using(var sw = new StreamWriter(archive.CreateEntry(HsReplayFile).Open()))
+					sw.Write(xml);
+				HsReplay = xml;
 			}
 			catch(Exception ex)
 			{
@@ -78,10 +74,10 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			if(!HasRawLogFile)
 				return false;
 			var log = RawLog.Split(new[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries).ToList();
-			var output = await HsReplayConverter.Convert(log, _game, null);
-			if(output == null)
+			var xml = await HsReplayConverter.Convert(log, _game, null);
+			if(string.IsNullOrEmpty(xml))
 				return false;
-			StoreHsReplay(output);
+			StoreHsReplay(xml);
 			return true;
 		}
 	}

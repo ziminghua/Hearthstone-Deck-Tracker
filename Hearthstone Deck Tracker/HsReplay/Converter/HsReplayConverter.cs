@@ -28,9 +28,10 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 			var result = LogValidator.Validate(log);
 			if(!result.Valid)
 				return null;
+			var tmpFile = Helper.GetValidFilePath(TmpDirPath, "tmp", "log");
 			try
 			{
-				using(var sw = new StreamWriter(TmpFilePath))
+				using(var sw = new StreamWriter(tmpFile))
 				{
 					foreach(var line in log)
 						sw.WriteLine(line);
@@ -41,40 +42,38 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 				Log.Error(e);
 				return null;
 			}
-			var success = await RunExeAsync(stats?.StartTime, result.IsPowerTaskList);
-			if(!success)
-				return null;
-			if(new FileInfo(HsReplayOutput).Length == 0)
+			var output = await RunExeAsync(tmpFile, stats?.StartTime, result.IsPowerTaskList);
+			if(string.IsNullOrEmpty(output))
 			{
 				Log.Error("Converter output is empty.");
 				return null;
 			}
-			XmlHelper.AddData(HsReplayOutput, gameMetaData, stats, includeDeck);
+			output = XmlHelper.AddData(output, gameMetaData, stats, includeDeck);
 			try
 			{
-				File.Delete(TmpFilePath);
+				File.Delete(tmpFile);
 			}
 			catch(Exception e)
 			{
 				Log.Error(e);
 			}
-			return HsReplayOutput;
+			return output;
 		}
 
-		private static async Task<bool> RunExeAsync(DateTime? time, bool usePowerTaskList)
+		private static async Task<string> RunExeAsync(string file, DateTime? time, bool usePowerTaskList)
 		{
 			try
 			{
-				return await Task.Run(() => RunExe(time, usePowerTaskList));
+				return await Task.Run(() => RunExe(file, time, usePowerTaskList));
 			}
 			catch(Exception e)
 			{
 				Log.Error(e);
-				return false;
+				return null;
 			}
 		}
 
-		private static bool RunExe(DateTime? time, bool usePowerTaskList)
+		private static string RunExe(string file, DateTime? time, bool usePowerTaskList)
 		{
 			var dateString = time?.ToString("yyyy-MM-dd");
 			var defaultDateArg = time.HasValue ? $"--default-date={dateString} " : "";
@@ -84,21 +83,18 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 				var procInfo = new ProcessStartInfo
 				{
 					FileName = HsReplayExe,
-					Arguments = defaultDateArg + processorArg + TmpFilePath,
+					Arguments = defaultDateArg + processorArg + file,
 					CreateNoWindow = true,
 					RedirectStandardOutput = true,
 					UseShellExecute = false
 				};
-				var proc = Process.Start(procInfo);
-				using(var sw = new StreamWriter(HsReplayOutput))
-					sw.Write(proc?.StandardOutput.ReadToEnd());
-				proc?.WaitForExit();
-				return true;
+				using(var proc = Process.Start(procInfo))
+					return proc?.StandardOutput.ReadToEnd();
 			}
 			catch(Exception e)
 			{
 				Log.Error(e);
-				return false;
+				return null;
 			}
 		}
 	}

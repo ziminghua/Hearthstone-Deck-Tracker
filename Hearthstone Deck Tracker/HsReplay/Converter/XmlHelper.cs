@@ -14,14 +14,16 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 {
 	internal class XmlHelper
 	{
-		public static void AddData(string xmlFile, GameMetaData gameMetaData, GameStats stats, bool includeDeck)
+		public static string AddData(string xml, GameMetaData gameMetaData, GameStats stats, bool includeDeck)
 		{
 			try
 			{
-				var xml = XDocument.Load(xmlFile);
-				var hsReplay = xml.Elements().FirstOrDefault(x => x.Name == XmlElements.HsReplay);
+				if(string.IsNullOrEmpty(xml))
+					return null;
+				var xDoc = XDocument.Parse(xml);
+				var hsReplay = xDoc.Elements().FirstOrDefault(x => x.Name == XmlElements.HsReplay);
 				if(hsReplay == null)
-					return;
+					return null;
 				hsReplay.SetAttributeValue(XmlAttributes.Build, stats.HearthstoneBuild ?? BuildDates.GetByDate(stats.StartTime));
 				var games = hsReplay.Elements().Where(x => x.Name == XmlElements.Game);
 				foreach(var game in games)
@@ -29,11 +31,12 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 					AddGameAttributes(game, gameMetaData, stats);
 					AddPlayerAttributes(game, gameMetaData, stats, includeDeck);
 				}
-				xml.Save(xmlFile);
+				return xDoc.ToString();
 			}
 			catch(Exception e)
 			{
 				Log.Error(e);
+				return null;
 			}
 		}
 

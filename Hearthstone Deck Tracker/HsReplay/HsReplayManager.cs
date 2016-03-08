@@ -21,18 +21,18 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 	{
 		internal static async Task ProcessPowerLog(List<string> powerLog, GameStats stats, GameMetaData metaData, bool includeDeck)
 		{
-			var file = await HsReplayConverter.Convert(powerLog, stats, metaData, includeDeck);
-			if(file == null)
+			var xml = await HsReplayConverter.Convert(powerLog, stats, metaData, includeDeck);
+			if(string.IsNullOrEmpty(xml))
 				return;
-			var result = await HsReplayUploader.UploadXmlFromFile(file);
+			var rfm = new ReplayFileManager(stats);
+			if(rfm.ReplayExists)
+				rfm.StoreHsReplay(xml);
+			var result = await HsReplayUploader.UploadXml(xml);
 			if(result.Success)
 			{
 				stats.HsReplay = new HsReplayInfo(result.ReplayId);
 				DeckStatsList.Save();
 				DefaultDeckStats.Save();
-				var rfm = new ReplayFileManager(stats);
-				if(rfm.ReplayExists)
-					rfm.StoreHsReplay(file);
 			}
 		}
 
