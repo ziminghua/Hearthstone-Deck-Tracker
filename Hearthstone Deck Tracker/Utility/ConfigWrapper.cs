@@ -2,6 +2,7 @@
 
 using System;
 using System.Windows;
+using Hearthstone_Deck_Tracker.HsReplay.Enums;
 
 #endregion
 
@@ -95,6 +96,16 @@ namespace Hearthstone_Deck_Tracker.Utility
 			set
 			{
 				Config.Instance.HsReplayAutoUpload = value;
+				Config.Save();
+			}
+		}
+
+		public static Privacy HsReplayPrivacy
+		{
+			get { return Config.Instance.HsReplayPrivacy; }
+			set
+			{
+				Config.Instance.HsReplayPrivacy = value;
 				Config.Save();
 			}
 		}

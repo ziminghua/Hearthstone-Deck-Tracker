@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows;
 using System.Xml.Serialization;
 using Hearthstone_Deck_Tracker.Enums;
+using Hearthstone_Deck_Tracker.HsReplay.Enums;
 using Hearthstone_Deck_Tracker.Utility.Logging;
 
 #endregion
@@ -417,6 +418,9 @@ namespace Hearthstone_Deck_Tracker
 
 		[DefaultValue(true)]
 		public bool HsReplayAutoUpload = true;
+
+		[DefaultValue(Privacy.Public)]
+		public Privacy HsReplayPrivacy = Privacy.Public;
 
 		[DefaultValue(-1)]
 		public int IgnoreNewsId = -1;
