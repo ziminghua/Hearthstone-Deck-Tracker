@@ -7,11 +7,13 @@ namespace Hearthstone_Deck_Tracker.HsReplay.API
 {
 	internal class Web
 	{
-		public static async Task<WebResponse> PostAsync(string url, string data)
+		public static async Task<WebResponse> PostAsync(string url, string data, params Header[] headers)
 		{
 			try
 			{
 				var request = CreatePostRequest(url);
+				foreach(var header in headers)
+					request.Headers.Add(header.Name, header.Value);
 				using(var stream = await request.GetRequestStreamAsync())
 					stream.Write(Encoding.UTF8.GetBytes(data), 0, data.Length);
 				return await request.GetResponseAsync();

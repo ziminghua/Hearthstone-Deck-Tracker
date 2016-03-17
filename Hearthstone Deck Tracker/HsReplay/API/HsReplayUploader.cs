@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Hearthstone_Deck_Tracker.Utility.Logging;
+using static Hearthstone_Deck_Tracker.HsReplay.Constants;
 
 #endregion
 
@@ -17,7 +18,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay.API
 			Log.Info("Uploading...");
 			try
 			{
-				var response = await Web.PostAsync(Constants.UploadUrl, xml);
+				var response = await Web.PostAsync(UploadUrl, xml, ApiManager.ApiKeyHeader, await ApiManager.GetUploadTokenHeader());
 				var location = response.Headers["Location"];
 				var id = location.Split('/').Last();
 				Log.Info("Success!");
