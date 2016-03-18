@@ -419,8 +419,29 @@ namespace Hearthstone_Deck_Tracker
 		[DefaultValue(true)]
 		public bool HsReplayAutoUpload = true;
 
-		[DefaultValue(Privacy.Public)]
-		public Privacy HsReplayPrivacy = Privacy.Public;
+		[DefaultValue(true)]
+		public bool HsReplayUploadPublic = true;
+
+		[DefaultValue(true)]
+		public bool HsReplayUploadRanked = true;
+
+		[DefaultValue(true)]
+		public bool HsReplayUploadCasual = true;
+
+		[DefaultValue(true)]
+		public bool HsReplayUploadArena = true;
+
+		[DefaultValue(true)]
+		public bool HsReplayUploadBrawl = true;
+
+		[DefaultValue(true)]
+		public bool HsReplayUploadFriendly = true;
+
+		[DefaultValue(true)]
+		public bool HsReplayUploadPractice = true;
+
+		[DefaultValue(true)]
+		public bool HsReplayUploadSpectator = true;
 
 		[DefaultValue(-1)]
 		public int IgnoreNewsId = -1;

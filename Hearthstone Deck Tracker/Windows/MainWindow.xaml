@@ -368,7 +368,7 @@
                         <TextBlock Grid.Column="1" Text="HSREPLAY.NET" IsEnabled="False" Margin="5,0"/>
                         <Separator Grid.Column="2"/>
                     </Grid>
-                    <MenuItem Header="CLAIM ACCOUNT"/>
+                    <MenuItem Header="MY ACCOUNT"/>
                 </MenuItem>
                 <MenuItem Header="_HEARTHSTATS" SubmenuOpened="MenuItemHearthStats_OnSubmenuOpened">
                     <MenuItem.Icon>

@@ -75,6 +75,14 @@ namespace Hearthstone_Deck_Tracker
 											 || _game.CurrentGameMode == Casual && Config.Instance.RecordCasual
 											 || _game.CurrentGameMode == Spectator && Config.Instance.RecordSpectator;
 
+		public bool UploadCurrentGameMode => _game.CurrentGameMode == Practice && Config.Instance.HsReplayUploadPractice
+											 || _game.CurrentGameMode == Arena && Config.Instance.HsReplayUploadArena
+											 || _game.CurrentGameMode == Brawl && Config.Instance.HsReplayUploadBrawl
+											 || _game.CurrentGameMode == Ranked && Config.Instance.HsReplayUploadRanked
+											 || _game.CurrentGameMode == Friendly && Config.Instance.HsReplayUploadFriendly
+											 || _game.CurrentGameMode == Casual && Config.Instance.HsReplayUploadCasual
+											 || _game.CurrentGameMode == Spectator && Config.Instance.HsReplayUploadSpectator;
+
 		public void ResetConstructedImporting()
 		{
 			Log.Info("Reset constructed importing");
@@ -155,18 +163,17 @@ namespace Hearthstone_Deck_Tracker
 			if(_game.StoredGameStats != null && _game.CurrentGameStats != null)
 				_game.CurrentGameStats.StartTime = _game.StoredGameStats.StartTime;
 
-			if(RecordCurrentGameMode && _game.CurrentGameStats != null)
+			if(_game.CurrentGameStats != null)
 			{
 				var powerLog = new List<string>();
 				foreach(var stored in _game.StoredPowerLogs.Where(x => x.Item1 == _game.MetaData.GameId))
 					powerLog.AddRange(stored.Item2);
 				powerLog.AddRange(_game.PowerLog);
-				if(Config.Instance.RecordReplays && _game.Entities.Count > 0 && !_game.SavedReplay && _game.CurrentGameStats.ReplayFile == null)
+				if(Config.Instance.RecordReplays && RecordCurrentGameMode && _game.Entities.Count > 0 && !_game.SavedReplay && _game.CurrentGameStats.ReplayFile == null)
 					_game.CurrentGameStats.ReplayFile = ReplayMaker.SaveToDisk(powerLog);
-				if(Config.Instance.HsReplayAutoUpload)
+				if(Config.Instance.HsReplayAutoUpload && UploadCurrentGameMode)
 					HsReplayManager.ProcessPowerLog(powerLog, _game.CurrentGameStats, _game.MetaData, !_game.NoMatchingDeck).Forget();
 			}
-
 
 			SaveAndUpdateStats();
 
