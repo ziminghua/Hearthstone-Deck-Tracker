@@ -8,7 +8,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay.API
 {
 	internal class ApiManager
 	{
-		private const string ApiKey = "%% APIKEY %%";
+		private const string ApiKey = "d1050cd9e8ed4ff7853dd109ee428505";
 		private const string ApiKeyHeaderName = "x-hsreplay-api-key";
 		private const string ApiUploadTokenHeaderName = "x-hsreplay-upload-token";
 
@@ -71,5 +71,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay.API
 			_uploadToken = token;
 			return token;
 		}
+
+		public static async Task<string> GetAccountUrl() => Constants.BaseUrl + "/agents/upload_token/" + await GetUploadToken();
 	}
 }

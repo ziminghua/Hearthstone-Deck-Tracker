@@ -293,6 +293,7 @@
     <Compile Include="Hearthstone\GameMetaData.cs" />
     <Compile Include="HsReplay\API\ApiManager.cs" />
     <Compile Include="HsReplay\API\Header.cs" />
+    <Compile Include="HsReplay\API\AccountSettings.cs" />
     <Compile Include="HsReplay\Enums\AccountStatus.cs" />
     <Compile Include="HsReplay\API\UploadResult.cs" />
     <Compile Include="HsReplay\API\Web.cs" />

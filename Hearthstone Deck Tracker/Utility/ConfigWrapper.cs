@@ -110,16 +110,6 @@ namespace Hearthstone_Deck_Tracker.Utility
 			}
 		}
 
-		public static bool HsReplayUploadPublic
-		{
-			get { return Config.Instance.HsReplayUploadPublic; }
-			set
-			{
-				Config.Instance.HsReplayUploadPublic = value;
-				Config.Save();
-			}
-		}
-
 		public static bool HsReplayUploadRanked
 		{
 			get { return Config.Instance.HsReplayUploadRanked; }

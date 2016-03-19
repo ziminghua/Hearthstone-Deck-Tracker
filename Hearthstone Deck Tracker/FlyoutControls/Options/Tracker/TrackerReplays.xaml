@@ -29,7 +29,7 @@
                     <CheckBox Content="Friendly" Margin="25,5,0,0" IsChecked="{Binding HsReplayUploadFriendly, Source={StaticResource ConfigWrapper}}"/>
                     <CheckBox Content="Adventure/Practice" Margin="25,5,0,0" IsChecked="{Binding HsReplayUploadPractice, Source={StaticResource ConfigWrapper}}"/>
                     <CheckBox Content="Spectator" Margin="25,5,0,0" IsChecked="{Binding HsReplayUploadSpectator, Source={StaticResource ConfigWrapper}}"/>
-                    <CheckBox Content="Make uploaded replays public" Margin="5,5,0,0" IsChecked="{Binding Path=HsReplayUploadPublic, Source={StaticResource ConfigWrapper}}"/>
+                    <CheckBox Name="CheckBoxReplayPrivacy" Content="Make uploaded replays public" Margin="5,5,0,0" IsChecked="{Binding UploadPublic, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     <Separator Margin="0,5"/>
                     <StackPanel Orientation="Horizontal">
                         <Label Content="Account Status:"/>

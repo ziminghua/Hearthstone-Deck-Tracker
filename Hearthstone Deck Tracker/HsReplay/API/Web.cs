@@ -1,31 +1,25 @@
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using Hearthstone_Deck_Tracker.Utility.Logging;
 
 namespace Hearthstone_Deck_Tracker.HsReplay.API
 {
 	internal class Web
 	{
-		public static async Task<WebResponse> PostAsync(string url, string data, params Header[] headers)
-		{
-			try
-			{
-				var request = CreatePostRequest(url);
-				foreach(var header in headers)
-					request.Headers.Add(header.Name, header.Value);
-				using(var stream = await request.GetRequestStreamAsync())
-					stream.Write(Encoding.UTF8.GetBytes(data), 0, data.Length);
-				return await request.GetResponseAsync();
-			}
-			catch(WebException e)
-			{
-				Log.Error(e);
-				throw;
-			}
-		}
+		public static async Task<HttpWebResponse> PostAsync(string url, string data, params Header[] headers) 
+			=> await SendWebRequestAsync(CreateRequest(url, "POST"), data, headers);
 
-		private static HttpWebRequest CreatePostRequest(string url) => CreateRequest(url, "POST");
+		public static async Task<HttpWebResponse> PutAsync(string url, string data, params Header[] headers) 
+			=> await SendWebRequestAsync(CreateRequest(url, "PUT"), data, headers);
+
+		private static async Task<HttpWebResponse> SendWebRequestAsync(HttpWebRequest request, string data, params Header[] headers)
+		{
+			foreach(var header in headers)
+				request.Headers.Add(header.Name, header.Value);
+			using(var stream = await request.GetRequestStreamAsync())
+				stream.Write(Encoding.UTF8.GetBytes(data), 0, data.Length);
+			return (HttpWebResponse)await request.GetResponseAsync();
+		}
 
 		private static HttpWebRequest CreateRequest(string url, string method)
 		{
