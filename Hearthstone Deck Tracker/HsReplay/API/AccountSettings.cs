@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Net;
 using System.Threading.Tasks;
 using Hearthstone_Deck_Tracker.Utility.Logging;
@@ -6,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Hearthstone_Deck_Tracker.HsReplay.API
 {
-	public class AccountSettings
+	internal class AccountSettings
 	{
 		public static async Task<bool> UpdateReplayPrivacy(bool isPublic)
 		{
@@ -15,6 +16,19 @@ namespace Hearthstone_Deck_Tracker.HsReplay.API
 			var response = await Web.PutAsync(await ApiManager.GetAccountUrl(), json, ApiManager.ApiKeyHeader);
 			Log.Info($"Status={response.StatusCode}");
 			return response.StatusCode == HttpStatusCode.OK;
+		}
+
+		public static async Task ClaimAccount()
+		{
+			try
+			{
+				Log.Info("Opening browser to claim account");
+				Process.Start(await ApiManager.GetClaimAccountUrl());
+			}
+			catch(Exception)
+			{
+				Log.Error("Could not open browser.");
+			}
 		}
 	}
 }

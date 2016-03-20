@@ -6,6 +6,7 @@ using System.Windows.Input;
 using Hearthstone_Deck_Tracker.Controls.Error;
 using Hearthstone_Deck_Tracker.HsReplay;
 using Hearthstone_Deck_Tracker.HsReplay.API;
+using Hearthstone_Deck_Tracker.Utility.Extensions;
 using Hearthstone_Deck_Tracker.Utility.Logging;
 using static System.Windows.Visibility;
 using static Hearthstone_Deck_Tracker.HsReplay.Enums.AccountStatus;
@@ -58,5 +59,7 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 				Cursor = Cursors.Arrow;
 			}
 		}
+
+		private void ButtonClaimAccount_OnClick(object sender, RoutedEventArgs e) => AccountSettings.ClaimAccount().Forget();
 	}
 }

@@ -37,7 +37,7 @@
                         <TextBlock VerticalAlignment="Center" Visibility="{Binding AccountNameVisibility, RelativeSource={RelativeSource AncestorType=UserControl}}" 
                                    Text="{Binding AccountName, Source={StaticResource HsReplayUtil}, StringFormat={}({0})}"/>
                     </StackPanel>
-                    <Button Content="Claim Account" Visibility="{Binding TextClaimVisibility, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    <Button Content="Claim Account" Visibility="{Binding TextClaimVisibility, RelativeSource={RelativeSource AncestorType=UserControl}}" Click="ButtonClaimAccount_OnClick"/>
                     <Label Content="Some text about claiming..." Visibility="{Binding TextClaimVisibility, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                 </StackPanel>
             </GroupBox>

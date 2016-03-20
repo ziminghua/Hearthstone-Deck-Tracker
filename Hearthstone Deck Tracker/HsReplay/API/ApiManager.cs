@@ -73,5 +73,8 @@ namespace Hearthstone_Deck_Tracker.HsReplay.API
 		}
 
 		public static async Task<string> GetAccountUrl() => Constants.BaseUrl + "/agents/upload_token/" + await GetUploadToken();
+
+		public static async Task<string> GetClaimAccountUrl() => $"{Constants.BaseUrl}/agents/{ApiKey}/attach_upload_token/{await GetUploadToken()}";
+
 	}
 }
