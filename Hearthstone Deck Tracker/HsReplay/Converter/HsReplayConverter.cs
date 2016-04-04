@@ -5,8 +5,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using Hearthstone_Deck_Tracker.Controls.Error;
 using Hearthstone_Deck_Tracker.Hearthstone;
+using Hearthstone_Deck_Tracker.HsReplay.API;
 using Hearthstone_Deck_Tracker.Stats;
+using Hearthstone_Deck_Tracker.Utility.Extensions;
 using Hearthstone_Deck_Tracker.Utility.Logging;
 using static Hearthstone_Deck_Tracker.HsReplay.Constants;
 
@@ -30,6 +33,8 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 			Converting.Add(id);
 			var output = await ConvertInternal(log, stats, gameMetaData, includeDeck);
 			Converting.Remove(id);
+			if(string.IsNullOrEmpty(output))
+				ErrorManager.AddError("Could not convert replay", "Check the \"%AppData%/HearthstoneDeckTracker/Logs/hdt_log.txt\" for more info.");
 			return output;
 		}
 
@@ -38,9 +43,13 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 			Log.Info($"Converting hsreplay, game={{{stats}}}");
 			if(!File.Exists(HsReplayExe))
 			{
+				Log.Warn($"{HsReplayExe} not found. Running setup.");
 				var setup = await HsReplayManager.Setup();
 				if(!setup)
+				{
+					Log.Error("Setup was not successful. Can not convert replay.");
 					return null;
+				}
 			}
 			var result = LogValidator.Validate(log);
 			if(!result.Valid)
@@ -48,36 +57,48 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 			var tmpFile = Helper.GetValidFilePath(TmpDirPath, "tmp", "log");
 			try
 			{
-				using(var sw = new StreamWriter(tmpFile))
+				try
 				{
-					foreach(var line in log)
-						sw.WriteLine(line);
+					Log.Info($"Creating temp log file for converter: {tmpFile}");
+					using(var sw = new StreamWriter(tmpFile))
+					{
+						foreach(var line in log)
+							sw.WriteLine(line);
+					}
+				}
+				catch(Exception e)
+				{
+					Log.Error(e);
+					return null;
+				}
+				var converterResult = await RunExeAsync(tmpFile, stats?.StartTime, result.IsPowerTaskList);
+				if(!string.IsNullOrEmpty(converterResult.Error))
+				{
+					ApiManager.PostError(converterResult.Error).Forget();
+					Log.Error(converterResult.Error);
+					return null;
+				}
+				if(string.IsNullOrEmpty(converterResult.Output))
+				{
+					Log.Error("Converter output is empty.");
+					return null;
+				}
+				return stats != null ? XmlHelper.AddData(converterResult.Output, gameMetaData, stats, includeDeck) : converterResult.Output;
+			}
+			finally
+			{
+				try
+				{
+					File.Delete(tmpFile);
+				}
+				catch(Exception e)
+				{
+					Log.Error(e);
 				}
 			}
-			catch(Exception e)
-			{
-				Log.Error(e);
-				return null;
-			}
-			var output = await RunExeAsync(tmpFile, stats?.StartTime, result.IsPowerTaskList);
-			if(string.IsNullOrEmpty(output))
-			{
-				Log.Error("Converter output is empty.");
-				return null;
-			}
-			output = XmlHelper.AddData(output, gameMetaData, stats, includeDeck);
-			try
-			{
-				File.Delete(tmpFile);
-			}
-			catch(Exception e)
-			{
-				Log.Error(e);
-			}
-			return output;
 		}
 
-		private static async Task<string> RunExeAsync(string file, DateTime? time, bool usePowerTaskList)
+		private static async Task<ConverterResult> RunExeAsync(string file, DateTime? time, bool usePowerTaskList)
 		{
 			try
 			{
@@ -86,11 +107,11 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 			catch(Exception e)
 			{
 				Log.Error(e);
-				return null;
+				return new ConverterResult();
 			}
 		}
 
-		private static string RunExe(string file, DateTime? time, bool usePowerTaskList)
+		private static ConverterResult RunExe(string file, DateTime? time, bool usePowerTaskList)
 		{
 			var dateString = time?.ToString("yyyy-MM-dd");
 			var defaultDateArg = time.HasValue ? $"--default-date={dateString} " : "";
@@ -103,16 +124,34 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 					Arguments = defaultDateArg + processorArg + file,
 					CreateNoWindow = true,
 					RedirectStandardOutput = true,
+					RedirectStandardError = true,
 					UseShellExecute = false
 				};
-				using(var proc = Process.Start(procInfo))
-					return proc?.StandardOutput.ReadToEnd();
+				Log.Info($"Running \"{procInfo.FileName} {procInfo.Arguments}\"");
+                using(var proc = Process.Start(procInfo))
+				{
+					if(proc == null)
+						return new ConverterResult();
+					return new ConverterResult(proc.StandardOutput.ReadToEnd(), proc.StandardError.ReadToEnd());
+				}
 			}
 			catch(Exception e)
 			{
 				Log.Error(e);
-				return null;
+				return new ConverterResult();
 			}
+		}
+	}
+
+	public class ConverterResult
+	{
+		public string Output { get; }
+		public string Error { get; }
+
+		public ConverterResult(string output = null, string error = null)
+		{
+			Output = output;
+			Error = error;
 		}
 	}
 }

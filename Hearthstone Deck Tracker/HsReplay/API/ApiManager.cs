@@ -75,9 +75,9 @@ namespace Hearthstone_Deck_Tracker.HsReplay.API
 			return token;
 		}
 
-		private static async Task<string> GetAccountUrl() => Constants.BaseUrl + "/agents/upload_token/" + await GetUploadToken();
+		private static async Task<string> GetAccountUrl() => Constants.BaseApiUrl + "/agents/upload_token/" + await GetUploadToken();
 
-		private static async Task<string> GetClaimAccountUrl() => $"{Constants.BaseUrl}/agents/{ApiKey}/attach_upload_token/{await GetUploadToken()}";
+		private static async Task<string> GetClaimAccountUrl() => $"{Constants.BaseApiUrl}/agents/{ApiKey}/attach_upload_token/{await GetUploadToken()}";
 
 		public static async Task<bool> UpdateReplayPrivacy(bool isPublic)
 		{
@@ -131,6 +131,11 @@ namespace Hearthstone_Deck_Tracker.HsReplay.API
 				}
 			}
 			Log.Info(statusMsg);
+		}
+
+		public static async Task PostError(string error)
+		{
+			//TODO
 		}
 	}
 }

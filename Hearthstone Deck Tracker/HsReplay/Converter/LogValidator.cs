@@ -14,6 +14,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 				Log.Warn($"Log was empty. {result}");
 				return result;
 			}
+			Log.Info($"Log length: {log.Count} lines");
 			result.IsPowerTaskList = log[0].Contains("PowerTaskList.");
 			var createGameLine = -1;
 			for(var i = 0; i < log.Count - 1; i++)

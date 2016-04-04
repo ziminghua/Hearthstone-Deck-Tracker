@@ -8,7 +8,8 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 {
 	internal class Constants
 	{
-		public const string BaseUrl = "http://hsreplay.net/api/v1";
+		public const string BaseUrl = "http://hsreplay.net";
+		private const string BaseApi = "/api/v1";
 		private const string UploadApi = "/replay/upload";
 		private const string GenerateUploadTokenApi = "/agents/generate_single_site_upload_token/";
 		private const string Msvcr100Dll = "msvcr100.dll";
@@ -20,8 +21,9 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 		private const string BuildDatesFile = "builddates.xml";
 		private const string UploadTokenFile = "token";
 
-		public static string UploadUrl => BaseUrl + UploadApi;
-		public static string GenerateUploadTokenUrl => BaseUrl + GenerateUploadTokenApi;
+		public static string BaseApiUrl => BaseUrl + BaseApi;
+		public static string UploadUrl => BaseApiUrl + UploadApi;
+		public static string GenerateUploadTokenUrl => BaseApiUrl + GenerateUploadTokenApi;
 		public static string BuildDateFilePath => Path.Combine(HsReplayPath, BuildDatesFile);
 		public static string Msvcr100DllHearthstonePath => Path.Combine(Config.Instance.HearthstoneDirectory, Msvcr100Dll);
 		public static string Msvcr100DllPath => Path.Combine(HsReplayPath, Msvcr100Dll);
