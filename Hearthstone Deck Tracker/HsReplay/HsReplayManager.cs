@@ -38,11 +38,8 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 
 		public static async Task<bool> ShowReplay(GameStats game)
 		{
-			if(game == null || !game.HasReplayFile)
-			{
-				Log.Warn($"Game ({game}) has no replay file.");
+			if(game == null)
 				return false;
-			}
 			if(Config.Instance.ForceLocalReplayViewer)
 			{
 				ReplayReader.LaunchReplayViewer(game.ReplayFile);
@@ -89,6 +86,28 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 				Log.Error(e);
 				return false;
 			}
+		}
+
+		public static async Task ShowReplay(string fileName)
+		{
+			if(Config.Instance.ForceLocalReplayViewer)
+			{
+				ReplayReader.LaunchReplayViewer(fileName);
+				return;
+			}
+			var rfm = new ReplayFileManager(fileName);
+			if(!rfm.HasHsReplayFile)
+				await rfm.ConvertAndStoreHsReplay();
+			if(rfm.HasHsReplayFile)
+			{
+				var result = await HsReplayUploader.UploadXml(rfm.HsReplay);
+				if(result.Success)
+					Helper.TryOpenUrl(new HsReplayInfo(result.ReplayId).Url);
+				else
+					ReplayReader.LaunchReplayViewer(fileName);
+			}
+			else
+				ReplayReader.LaunchReplayViewer(fileName);
 		}
 	}
 }

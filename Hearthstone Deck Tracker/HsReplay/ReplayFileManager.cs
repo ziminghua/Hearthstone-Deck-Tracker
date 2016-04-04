@@ -25,6 +25,11 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			_game = game;
 			if(!ReplayExists)
 				return;
+			if(_game.StartTime == DateTime.MinValue && File.Exists(game.ReplayFile))
+			{
+				var fi = new FileInfo(game.ReplayFile);
+				_game.StartTime = fi.LastWriteTime;
+			}
 			using(var fs = new FileStream(FilePath, FileMode.Open))
 			using(var archive = new ZipArchive(fs, ZipArchiveMode.Read))
 			{
@@ -40,6 +45,10 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 						RawLog = sr.ReadToEnd();
 				}
 			}
+		}
+
+		public ReplayFileManager(string filePath) : this(new GameStats() { ReplayFile = filePath})
+		{
 		}
 
 		public string FilePath => _game.ReplayFile != null ? Path.Combine(Config.Instance.ReplayDir, _game.ReplayFile) : null;
@@ -74,7 +83,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			if(!HasRawLogFile)
 				return false;
 			var log = RawLog.Split(new[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries).ToList();
-			var xml = await HsReplayConverter.Convert(log, _game, null);
+			var xml = await HsReplayConverter.Convert(log, _game.StartTime == DateTime.MinValue ? null :_game, null);
 			if(string.IsNullOrEmpty(xml))
 				return false;
 			StoreHsReplay(xml);

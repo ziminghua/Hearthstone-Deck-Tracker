@@ -171,7 +171,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 				};
 				var dialogResult = dialog.ShowDialog();
 				if(dialogResult == System.Windows.Forms.DialogResult.OK)
-					ReplayReader.LaunchReplayViewer(dialog.FileName);
+					HsReplayManager.ShowReplay(dialog.FileName);
 			}
 			catch(Exception ex)
 			{
