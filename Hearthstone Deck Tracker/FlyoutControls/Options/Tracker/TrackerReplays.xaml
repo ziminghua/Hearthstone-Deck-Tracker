@@ -3,20 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:sys="clr-namespace:System;assembly=mscorlib"
-             xmlns:enums="clr-namespace:Hearthstone_Deck_Tracker.HsReplay.Enums"
-             xmlns:hsReplay="clr-namespace:Hearthstone_Deck_Tracker.HsReplay"
              xmlns:options="clr-namespace:Hearthstone_Deck_Tracker.FlyoutControls.Options"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="300">
-    <UserControl.Resources>
-        <ObjectDataProvider MethodName="GetValues" ObjectType="{x:Type sys:Enum}" x:Key="PrivacyDataProvider">
-            <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="enums:Privacy" />
-            </ObjectDataProvider.MethodParameters>
-        </ObjectDataProvider>
-        <hsReplay:HsReplayUtil x:Key="HsReplayUtil"/>
-    </UserControl.Resources>
     <GroupBox Header="REPLAYS">
         <StackPanel>
             <GroupBox Header="HSREPLAY.NET">
@@ -31,13 +20,19 @@
                     <CheckBox Content="Spectator" Margin="25,5,0,0" IsChecked="{Binding HsReplayUploadSpectator, Source={StaticResource ConfigWrapper}}"/>
                     <CheckBox Name="CheckBoxReplayPrivacy" Content="Make uploaded replays public" Margin="5,5,0,0" IsChecked="{Binding UploadPublic, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     <Separator Margin="0,5"/>
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="Account Status:"/>
-                        <Label Content="{Binding AccountStatus, Source={StaticResource HsReplayUtil}}"/>
-                        <TextBlock VerticalAlignment="Center" Visibility="{Binding AccountNameVisibility, RelativeSource={RelativeSource AncestorType=UserControl}}" 
-                                   Text="{Binding AccountName, Source={StaticResource HsReplayUtil}, StringFormat={}({0})}"/>
-                    </StackPanel>
-                    <Button Content="Claim Account" Visibility="{Binding TextClaimVisibility, RelativeSource={RelativeSource AncestorType=UserControl}}" Click="ButtonClaimAccount_OnClick"/>
+                    <DockPanel>
+                        <Label Content="Account Status:" DockPanel.Dock="Left"/>
+                        <Label Content="{Binding AccountStatus, RelativeSource={RelativeSource AncestorType=UserControl}}" DockPanel.Dock="Left"/>
+                        <Button Name="ButtonRefresh" DockPanel.Dock="Right" Width="26" Click="ButtonRefresh_OnClick">
+                            <Rectangle Width="11" Height="14" HorizontalAlignment="Center">
+                                <Rectangle.Fill>
+                                    <VisualBrush Visual="{StaticResource appbar_refresh}"/>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </Button>
+                        <TextBlock VerticalAlignment="Center" Text="{Binding BattleTag, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                    </DockPanel>
+                    <Button Name="ButtonClaimAccount" Content="Claim Account" Margin="0,2,0,0" Visibility="{Binding TextClaimVisibility, RelativeSource={RelativeSource AncestorType=UserControl}}" Click="ButtonClaimAccount_OnClick"/>
                     <Label Content="Some text about claiming..." Visibility="{Binding TextClaimVisibility, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                 </StackPanel>
             </GroupBox>

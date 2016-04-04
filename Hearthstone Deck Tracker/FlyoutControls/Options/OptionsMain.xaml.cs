@@ -90,6 +90,10 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls
 		private void TreeViewItemTrackerHotKeys_OnSelected(object sender, RoutedEventArgs e) => ContentControlOptions.Content = OptionsTrackerHotKeys;
 		private void TreeViewItemTrackerNotifications_OnSelected(object sender, RoutedEventArgs e) => ContentControlOptions.Content = OptionsTrackerNotifications;
 		private void TreeViewItemSearch_OnSelected(object sender, RoutedEventArgs e) => ContentControlOptions.Content = OptionsSearch;
-		private void TreeViewItemTrackerReplays_OnSelected(object sender, RoutedEventArgs e) => ContentControlOptions.Content = OptionsTrackerReplays;
+		private void TreeViewItemTrackerReplays_OnSelected(object sender, RoutedEventArgs e)
+		{
+			ContentControlOptions.Content = OptionsTrackerReplays;
+			OptionsTrackerReplays.Update();
+		}
 	}
 }

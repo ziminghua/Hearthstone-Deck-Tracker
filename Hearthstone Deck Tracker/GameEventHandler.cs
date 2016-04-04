@@ -172,7 +172,7 @@ namespace Hearthstone_Deck_Tracker
 				if(Config.Instance.RecordReplays && RecordCurrentGameMode && _game.Entities.Count > 0 && !_game.SavedReplay && _game.CurrentGameStats.ReplayFile == null)
 					_game.CurrentGameStats.ReplayFile = ReplayMaker.SaveToDisk(powerLog);
 				if(Config.Instance.HsReplayAutoUpload && UploadCurrentGameMode)
-					HsReplayManager.ProcessPowerLog(powerLog, _game.CurrentGameStats, _game.MetaData, !_game.NoMatchingDeck).Forget();
+					HsReplayManager.ProcessPowerLog(powerLog, _game.CurrentGameStats, _game.MetaData, PlayerDeckMatchesRevealedCards).Forget();
 			}
 
 			SaveAndUpdateStats();
@@ -605,9 +605,7 @@ namespace Hearthstone_Deck_Tracker
 			var selectedDeck = DeckList.Instance.ActiveDeck;
 			if(selectedDeck != null)
 			{
-				if(Config.Instance.DiscardGameIfIncorrectDeck
-				   && !_game.Player.RevealedEntities.Where(x => (x.IsMinion || x.IsSpell || x.IsWeapon) && !x.Info.Created && !x.Info.Stolen)
-				   .GroupBy(x => x.CardId).All(x => selectedDeck.GetSelectedDeckVersion().Cards.Any(c2 => x.Key == c2.Id && x.Count() <= c2.Count)))
+				if(Config.Instance.DiscardGameIfIncorrectDeck && !PlayerDeckMatchesRevealedCards)
 				{
 					if(Config.Instance.AskBeforeDiscardingGame)
 					{
@@ -715,7 +713,13 @@ namespace Hearthstone_Deck_Tracker
 				Config.Save();
 			}
 		}
+
 #pragma warning restore 4014
+
+		private bool PlayerDeckMatchesRevealedCards
+			=> DeckList.Instance.ActiveDeck != null && _game.Player.RevealedEntities.Where(x => (x.IsMinion || x.IsSpell || x.IsWeapon) && !x.Info.Created && !x.Info.Stolen)
+					.GroupBy(x => x.CardId).All(x => DeckList.Instance.ActiveDeck.GetSelectedDeckVersion().Cards.Any(c2 => x.Key == c2.Id && x.Count() <= c2.Count));
+
 		private async Task GameModeSaved(int timeoutInSeconds)
 		{
 			var startTime = DateTime.Now;

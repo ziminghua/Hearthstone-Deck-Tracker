@@ -76,6 +76,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 		{
 			try
 			{
+				await ApiManager.UpdateAccountStatus();
 				Directory.CreateDirectory(HsReplayPath);
 				Directory.CreateDirectory(TmpDirPath);
 				await HsReplayUpdater.Update();

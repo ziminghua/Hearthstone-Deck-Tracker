@@ -420,9 +420,6 @@ namespace Hearthstone_Deck_Tracker
 		public bool HsReplayAutoUpload = true;
 
 		[DefaultValue(true)]
-		public bool HsReplayUploadPublic = true;
-
-		[DefaultValue(true)]
 		public bool HsReplayUploadRanked = true;
 
 		[DefaultValue(true)]
