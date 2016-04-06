@@ -358,17 +358,6 @@
                     </MenuItem>
                     <MenuItem Header="_SELECT FROM STATS" Click="MenuItemReplaySelectGame_OnClick" />
                     <MenuItem Header="LOAD FROM _FILE" Click="MenuItemReplayFromFile_OnClick"/>
-                    <Grid Margin="-10,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Separator Grid.Column="0"/>
-                        <TextBlock Grid.Column="1" Text="HSREPLAY.NET" IsEnabled="False" Margin="5,0"/>
-                        <Separator Grid.Column="2"/>
-                    </Grid>
-                    <MenuItem Header="MY ACCOUNT"/>
                 </MenuItem>
                 <MenuItem Header="_HEARTHSTATS" SubmenuOpened="MenuItemHearthStats_OnSubmenuOpened">
                     <MenuItem.Icon>

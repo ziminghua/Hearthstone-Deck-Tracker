@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
         ShowInTaskbar="False"
         WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Topmost="True"
-        Height="75" Width="250" BorderThickness="1" BorderBrush="{DynamicResource AccentColorBrush}">
+        Height="34" Width="250" BorderThickness="1" BorderBrush="{DynamicResource AccentColorBrush}">
     <Window.Resources>
         <Storyboard x:Key="StoryboardFadeOut" Completed="StoryboardFadeOut_OnCompleted">
             <DoubleAnimation Duration="0:0:0.4" From="1" To="0" Storyboard.TargetProperty="Opacity"/>
@@ -19,7 +19,7 @@
         </EventTrigger>
     </Window.Triggers>
     <DockPanel>
-        <Border Name="BorderReplay" DockPanel.Dock="Top" Background="{DynamicResource AccentColorBrush}" Height="40" Margin="0,0,0,1" 
+        <Border Name="BorderReplay" DockPanel.Dock="Top" Background="{DynamicResource AccentColorBrush}" Height="40" Margin="0,0,0,1"  Visibility="Collapsed"
                 MouseEnter="BorderReplay_OnMouseEnter" MouseLeave="BorderReplay_OnMouseLeave" MouseLeftButtonUp="BorderReplay_OnMouseLeftButtonUp">
             <DockPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                 <Rectangle Width="20" Height="24" DockPanel.Dock="Left">

@@ -40,11 +40,6 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 		{
 			if(game == null)
 				return false;
-			if(Config.Instance.ForceLocalReplayViewer)
-			{
-				ReplayReader.LaunchReplayViewer(game.ReplayFile);
-				return true;
-			}
 			var rfm = new ReplayFileManager(game);
 			if(!rfm.HasHsReplayFile)
 				await rfm.ConvertAndStoreHsReplay();
@@ -53,16 +48,17 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 				var result = await HsReplayUploader.UploadXml(rfm.HsReplay);
 				if(result.Success)
 				{
+					Log.Info("Replay was uploaded successfully");
 					game.HsReplay = new HsReplayInfo(result.ReplayId);
 					if(DefaultDeckStats.Instance.DeckStats.Any(x => x.DeckId == game.DeckId))
 						DefaultDeckStats.Save();
 					else
 						DeckStatsList.Save();
 				}
+				else
+					Log.Error("Replay was not uploaded successfully");
 			}
-			if(game.HsReplay?.Uploaded ?? false)
-				Helper.TryOpenUrl(game.HsReplay?.Url);
-			else if(game.HasReplayFile)
+			if(game.HasReplayFile)
 				ReplayReader.LaunchReplayViewer(game.ReplayFile);
 			else
 				return false;
@@ -90,11 +86,6 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 
 		public static async Task ShowReplay(string fileName)
 		{
-			if(Config.Instance.ForceLocalReplayViewer)
-			{
-				ReplayReader.LaunchReplayViewer(fileName);
-				return;
-			}
 			var rfm = new ReplayFileManager(fileName);
 			if(!rfm.HasHsReplayFile)
 				await rfm.ConvertAndStoreHsReplay();
@@ -102,12 +93,11 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			{
 				var result = await HsReplayUploader.UploadXml(rfm.HsReplay);
 				if(result.Success)
-					Helper.TryOpenUrl(new HsReplayInfo(result.ReplayId).Url);
+					Log.Info("Replay was uploaded successfully");
 				else
-					ReplayReader.LaunchReplayViewer(fileName);
+					Log.Error("Replay was not uploaded successfully");
 			}
-			else
-				ReplayReader.LaunchReplayViewer(fileName);
+			ReplayReader.LaunchReplayViewer(fileName);
 		}
 	}
 }

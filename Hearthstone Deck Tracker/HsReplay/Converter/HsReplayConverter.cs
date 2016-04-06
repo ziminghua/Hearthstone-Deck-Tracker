@@ -34,8 +34,8 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 			Converting.Add(id);
 			var output = await ConvertInternal(log, stats, gameMetaData, includeDeck);
 			Converting.Remove(id);
-			if(string.IsNullOrEmpty(output))
-				ErrorManager.AddError("Could not convert replay", "Check the \"%AppData%/HearthstoneDeckTracker/Logs/hdt_log.txt\" for more info.");
+			//if(string.IsNullOrEmpty(output))
+			//	ErrorManager.AddError("Could not convert replay", "Check the \"%AppData%/HearthstoneDeckTracker/Logs/hdt_log.txt\" for more info.");
 			return output;
 		}
 
@@ -75,9 +75,8 @@ namespace Hearthstone_Deck_Tracker.HsReplay.Converter
 				var converterResult = await RunExeAsync(tmpFile, stats?.StartTime, result.IsPowerTaskList);
 				if(!string.IsNullOrEmpty(converterResult.Error))
 				{
-					ApiManager.PostError(converterResult.Error).Forget();
+					//ApiManager.PostError(converterResult.Error).Forget();
 					Log.Error(converterResult.Error);
-					return null;
 				}
 				if(string.IsNullOrEmpty(converterResult.Output))
 				{
