@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Hearthstone_Deck_Tracker.HsReplay.Converter;
 using Hearthstone_Deck_Tracker.Stats;
@@ -68,7 +69,7 @@ namespace Hearthstone_Deck_Tracker.HsReplay
 			{
 				using(var fs = new FileStream(FilePath, FileMode.Open))
 				using(var archive = new ZipArchive(fs, ZipArchiveMode.Update))
-				using(var sw = new StreamWriter(archive.CreateEntry(HsReplayFile).Open()))
+				using(var sw = new StreamWriter(archive.CreateEntry(HsReplayFile).Open(), Encoding.UTF8))
 					sw.Write(xml);
 				HsReplay = xml;
 			}
