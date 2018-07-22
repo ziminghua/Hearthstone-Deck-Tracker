@@ -9,10 +9,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Media.Imaging;
-using Hearthstone_Deck_Tracker.Exporting;
 using Hearthstone_Deck_Tracker.Utility.Extensions;
 using Hearthstone_Deck_Tracker.Utility.Logging;
-using MahApps.Metro.Controls.Dialogs;
 using Clipboard = System.Windows.Clipboard;
 
 #endregion
@@ -78,8 +76,12 @@ namespace Hearthstone_Deck_Tracker.Utility.HotKeys
 			if(!Core.Game.IsRunning)
 				return;
 			Config.Instance.HideSecrets = !Config.Instance.HideSecrets;
+			Core.MainWindow.Options.OptionsOverlayOpponent.CheckboxHideSecrets.IsChecked = Config.Instance.HideSecrets;
 			Config.Save();
-			Core.Overlay.UpdatePosition();
+			if(Config.Instance.HideSecrets)
+				Core.Overlay.HideSecrets();
+			else
+				Core.Overlay.UnhideSecrects();
 		}
 
 		[PredefinedHotKeyAction("Toggle overlay: timers", "Turns the timers on the overlay on or off (if the game is running).")]
@@ -104,6 +106,15 @@ namespace Hearthstone_Deck_Tracker.Utility.HotKeys
 			Core.Overlay.UpdatePosition();
 		}
 
+		[PredefinedHotKeyAction("Toggle My Games panel", "Turns on or off visibility of My Games panel.")]
+		public static void ToggleMyGamesPanel()
+		{
+			Config.Instance.ShowMyGamesPanel = !Config.Instance.ShowMyGamesPanel;
+			Core.MainWindow.Options.OptionsTrackerGeneral.CheckboxShowMyGamesPanel.IsChecked = Config.Instance.ShowMyGamesPanel;
+			Core.MainWindow.UpdateMyGamesPanelVisibility();
+			Config.Save();
+		}
+
 		[PredefinedHotKeyAction("Toggle no deck mode", "Activates \"no deck mode\" (use no deck) or selects the last used deck.")]
 		public static void ToggleNoDeckMode()
 		{
@@ -113,20 +124,12 @@ namespace Hearthstone_Deck_Tracker.Utility.HotKeys
 				Core.MainWindow.SelectDeck(null, true);
 		}
 
-		[PredefinedHotKeyAction("Export deck",
-			"Activates \"no deck mode\" (use no deck) or selects the last used deck. This will not show any dialogs in the main window.")]
-		public static void ExportDeck()
-		{
-			if(DeckList.Instance.ActiveDeck != null && Core.Game.IsInMenu)
-				DeckExporter.Export(DeckList.Instance.ActiveDeckVersion, null).Forget();
-		}
-
 		[PredefinedHotKeyAction("Edit active deck", "Opens the edit dialog for the active deck (if any) and brings HDT to foreground.")]
 		public static void EditDeck()
 		{
 			if(DeckList.Instance.ActiveDeck == null)
 				return;
-			Core.MainWindow.SetNewDeck(DeckList.Instance.ActiveDeck, true);
+			Core.MainWindow.ShowDeckEditorFlyout(DeckList.Instance.ActiveDeck, false);
 			Core.MainWindow.ActivateWindow();
 		}
 
@@ -172,7 +175,7 @@ namespace Hearthstone_Deck_Tracker.Utility.HotKeys
 		}
 
 		[PredefinedHotKeyAction("Screenshot",
-			"Creates a screenshot of the game and overlay (and everthing else in front of it). Comes with an option to automatically upload to imgur."
+			"Creates a screenshot of the game and overlay (and everything else in front of it). Comes with an option to automatically upload to imgur."
 			)]
 		public static async void Screenshot()
 		{
@@ -231,8 +234,7 @@ namespace Hearthstone_Deck_Tracker.Utility.HotKeys
 		[PredefinedHotKeyAction("Start Hearthstone", "Starts the Battle.net launcher and/or Hearthstone.")]
 		public static void StartHearthstone()
 		{
-			if(Core.MainWindow.BtnStartHearthstone.IsEnabled)
-				Helper.StartHearthstoneAsync().Forget();
+			HearthstoneRunner.StartHearthstone().Forget();
 		}
 
 		[PredefinedHotKeyAction("Show main window", "Brings up the main window.")]

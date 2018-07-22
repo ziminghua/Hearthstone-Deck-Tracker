@@ -10,6 +10,7 @@ using HearthMirror.Objects;
 using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.Enums.Hearthstone;
 using Hearthstone_Deck_Tracker.Hearthstone.Entities;
+using Hearthstone_Deck_Tracker.Hearthstone.Secrets;
 using Hearthstone_Deck_Tracker.Replay;
 using Hearthstone_Deck_Tracker.Stats;
 using Hearthstone_Deck_Tracker.Utility.Logging;
@@ -27,13 +28,14 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		private bool? _spectator;
 		private MatchInfo _matchInfo;
 		private Mode _currentMode;
+		private BrawlInfo _brawlInfo;
 
 		public GameV2()
 		{
 			Player = new Player(this, true);
 			Opponent = new Player(this, false);
 			IsInMenu = true;
-			OpponentSecrets = new OpponentSecrets(this);
+			SecretsManager = new SecretsManager(this);
 			Reset();
 		}
 
@@ -47,22 +49,33 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public int OpponentMinionCount => Entities.Count(x => (x.Value.IsInPlay && x.Value.IsMinion && x.Value.IsControlledBy(Opponent.Id)));
 		public int PlayerMinionCount => Entities.Count(x => (x.Value.IsInPlay && x.Value.IsMinion && x.Value.IsControlledBy(Player.Id)));
+		public int OpponentHandCount => Entities.Count(x => x.Value.IsInHand && x.Value.IsControlledBy(Opponent.Id));
 
 		public Player Player { get; set; }
 		public Player Opponent { get; set; }
 		public bool IsInMenu { get; set; }
 		public bool IsUsingPremade { get; set; }
-		public int OpponentSecretCount { get; set; }
 		public bool IsRunning { get; set; }
 		public Region CurrentRegion { get; set; }
 		public GameStats CurrentGameStats { get; set; }
-		public OpponentSecrets OpponentSecrets { get; set; }
+		public HearthMirror.Objects.Deck CurrentSelectedDeck { get; set; }
+		public SecretsManager SecretsManager { get; }
 		public List<Card> DrawnLastGame { get; set; }
 		public Dictionary<int, Entity> Entities { get; } = new Dictionary<int, Entity>();
 		public GameMetaData MetaData { get; } = new GameMetaData();
 		internal List<Tuple<int, List<string>>> StoredPowerLogs { get; } = new List<Tuple<int, List<string>>>();
 		internal Dictionary<int, string> StoredPlayerNames { get; } = new Dictionary<int, string>();
 		internal GameStats StoredGameStats { get; set; }
+		public int ProposedAttacker { get; set; }
+		public int ProposedDefender { get; set; }
+		public bool SetupDone { get; set; }
+
+		public bool PlayerChallengeable => CurrentMode == Mode.HUB || CurrentMode == Mode.TOURNAMENT || CurrentMode == Mode.ADVENTURE
+					|| CurrentMode == Mode.TAVERN_BRAWL || CurrentMode == Mode.DRAFT || CurrentMode == Mode.PACKOPENING
+					|| CurrentMode == Mode.COLLECTIONMANAGER;
+
+		public bool? IsDungeonMatch => string.IsNullOrEmpty(CurrentGameStats?.OpponentHeroCardId) || CurrentGameType == GameType.GT_UNKNOWN ? (bool?)null
+			: CurrentGameType == GameType.GT_VS_AI && DungeonRun.IsDungeonBoss(CurrentGameStats.OpponentHeroCardId);
 
 		public Mode CurrentMode
 		{
@@ -128,20 +141,33 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		public MatchInfo MatchInfo => _matchInfo ?? (_matchInfo = HearthMirror.Reflection.GetMatchInfo());
 		private bool _matchInfoCacheInvalid = true;
 
+		public BrawlInfo BrawlInfo => _brawlInfo ?? (_brawlInfo = HearthMirror.Reflection.GetBrawlInfo());
+
 		internal async void CacheMatchInfo()
 		{
 			if(!_matchInfoCacheInvalid)
 				return;
-			_matchInfoCacheInvalid = false;
 			MatchInfo matchInfo;
 			while((matchInfo = HearthMirror.Reflection.GetMatchInfo()) == null || matchInfo.LocalPlayer == null || matchInfo.OpposingPlayer == null)
 				await Task.Delay(1000);
-			Log.Info($"{matchInfo.LocalPlayer.Name} vs {matchInfo.OpposingPlayer.Name}");
 			_matchInfo = matchInfo;
-			Player.Name = matchInfo.LocalPlayer.Name;
-			Opponent.Name = matchInfo.OpposingPlayer.Name;
-			Player.Id = matchInfo.LocalPlayer.Id;
-			Opponent.Id = matchInfo.OpposingPlayer.Id;
+			UpdatePlayers();
+			_matchInfoCacheInvalid = false;
+			Log.Info($"{Player.Name} vs {Opponent.Name}");
+		}
+
+		private void UpdatePlayers()
+		{
+			string GetName(MatchInfo.Player player)
+			{
+				if(player.BattleTag != null)
+					return $"{player.BattleTag.Name}#{player.BattleTag.Number}";
+				return player.Name;
+			}
+			Player.Name = GetName(_matchInfo.LocalPlayer);
+			Opponent.Name = GetName(_matchInfo.OpposingPlayer);
+			Player.Id = _matchInfo.LocalPlayer.Id;
+			Opponent.Id = _matchInfo.OpposingPlayer.Id;
 		}
 
 		internal async void CacheGameType()
@@ -152,26 +178,24 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		internal void CacheSpectator() => _spectator = HearthMirror.Reflection.IsSpectating();
 
+		internal void CacheBrawlInfo() => _brawlInfo = HearthMirror.Reflection.GetBrawlInfo();
+
 		internal void InvalidateMatchInfoCache() => _matchInfoCacheInvalid = true;
 
 		public void Reset(bool resetStats = true)
 		{
 			Log.Info("-------- Reset ---------");
 
-			ReplayMaker.Reset();
 			Player.Reset();
 			Opponent.Reset();
 			if(!_matchInfoCacheInvalid && MatchInfo?.LocalPlayer != null && MatchInfo.OpposingPlayer != null)
-			{
-				Player.Name = MatchInfo.LocalPlayer.Name;
-				Opponent.Name = MatchInfo.OpposingPlayer.Name;
-				Player.Id = MatchInfo.LocalPlayer.Id;
-				Opponent.Id = MatchInfo.OpposingPlayer.Id;
-			}
+				UpdatePlayers();
+			ProposedAttacker = 0;
+			ProposedDefender = 0;
 			Entities.Clear();
 			SavedReplay = false;
-			OpponentSecretCount = 0;
-			OpponentSecrets.ClearSecrets();
+			SecretsManager.Reset();
+			SetupDone = false;
 			_spectator = null;
 			_currentGameMode = GameMode.None;
 			_currentGameType = GameType.GT_UNKNOWN;
@@ -201,12 +225,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				StoredGameStats = CurrentGameStats;
 		}
 
-		public string GetStoredPlayerName(int id)
-		{
-			string name;
-			StoredPlayerNames.TryGetValue(id, out name);
-			return name;
-		}
+		public string GetStoredPlayerName(int id) => StoredPlayerNames.TryGetValue(id, out var name) ? name : string.Empty;
 
 		internal void ResetStoredGameState()
 		{
@@ -215,24 +234,11 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			StoredGameStats = null;
 		}
 
-		#region Database - Obsolete
-
-		[Obsolete("Use Hearthstone.Database.GetCardFromId", true)]
-		public static Card GetCardFromId(string cardId) => Database.GetCardFromId(cardId);
-
-		[Obsolete("Use Hearthstone.Database.GetCardFromName", true)]
-		public static Card GetCardFromName(string name, bool localized = false) => Database.GetCardFromName(name, localized);
-
-		[Obsolete("Use Hearthstone.Database.GetActualCards", true)]
-		public static List<Card> GetActualCards() => Database.GetActualCards();
-
-		[Obsolete("Use Hearthstone.Database.GetHeroNameFromId", true)]
-		public static string GetHeroNameFromId(string id, bool returnIdIfNotFound = true)
-			=> Database.GetHeroNameFromId(id, returnIdIfNotFound);
-
-		[Obsolete("Use Hearthstone.Database.IsActualCard", true)]
-		public static bool IsActualCard(Card card) => Database.IsActualCard(card);
-
-		#endregion
+		public int GetTurnNumber()
+		{
+			if (!IsMulliganDone)
+				return 0;
+			return (GameEntity?.GetTag(GameTag.TURN) + 1) / 2 ?? 0;
+		}
 	}
 }

@@ -1,4 +1,4 @@
-#region
+﻿#region
 
 using System;
 using System.Windows;
@@ -38,7 +38,7 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 			ComboBoxCardTheme.ItemsSource = Utility.Themes.ThemeManager.Themes;
 
 			ComboboxTheme.SelectedItem = Config.Instance.AppTheme;
-			ComboboxAccent.SelectedItem = Helper.GetAppAccent();
+			ComboboxAccent.SelectedItem = UITheme.CurrentAccent;
 			ComboBoxLanguage.SelectedItem = Config.Instance.Localization;
 
 			ComboBoxIconSet.SelectedItem = Config.Instance.ClassIconStyle;
@@ -58,9 +58,9 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 			var accent = ComboboxAccent.SelectedItem as Accent;
 			if(accent != null)
 			{
-				ThemeManager.ChangeAppStyle(Application.Current, accent, ThemeManager.DetectAppStyle().Item1);
 				Config.Instance.AccentName = accent.Name;
 				Config.Save();
+				UITheme.UpdateAccent();
 			}
 		}
 
@@ -70,7 +70,7 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 				return;
 			Config.Instance.AppTheme = (MetroTheme)ComboboxTheme.SelectedItem;
 			Config.Save();
-			Helper.UpdateAppTheme();
+			UITheme.UpdateTheme();
 			Helper.OptionsMain.OptionsOverlayDeckWindows.UpdateAdditionalWindowsBackground();
 		}
 
@@ -189,6 +189,34 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 			Config.Instance.Localization = (Language)ComboBoxLanguage.SelectedItem;
 			Config.Save();
 			LocUtil.UpdateCultureInfo();
+			UpdateUIAfterChangeLanguage();
+		}
+
+		private void UpdateUIAfterChangeLanguage()
+		{
+			// Options
+			Helper.OptionsMain.ContentHeader = LocUtil.Get("Options_Tracker_Appearance_Header");
+
+			// TrayIcon
+			Core.TrayIcon.MenuItemStartHearthstone.Text = LocUtil.Get("TrayIcon_MenuItemStartHearthstone");
+			Core.TrayIcon.MenuItemUseNoDeck.Text = LocUtil.Get("TrayIcon_MenuItemUseNoDeck");
+			Core.TrayIcon.MenuItemAutoSelect.Text = LocUtil.Get("TrayIcon_MenuItemAutoSelect");
+			Core.TrayIcon.MenuItemClassCardsFirst.Text = LocUtil.Get("TrayIcon_MenuItemClassCardsFirst");
+			Core.TrayIcon.MenuItemShow.Text = LocUtil.Get("TrayIcon_MenuItemShow");
+			Core.TrayIcon.MenuItemExit.Text = LocUtil.Get("TrayIcon_MenuItemExit");
+
+			// My Games Panel
+			Core.MainWindow.DeckCharts.ReloadUI();
+
+			// Deck Picker
+			Core.MainWindow.DeckPickerList.ReloadUI();
+
+			//Overlay Panel
+			Core.MainWindow.Options.OptionsOverlayPlayer.ReloadUI();
+			Core.MainWindow.Options.OptionsOverlayOpponent.ReloadUI();
+
+			// Reload ComboBoxes
+			ComboBoxHelper.Update();
 		}
 
 		private void Hyperlink_RequestNavigate(object sender, RequestNavigateEventArgs e) => Helper.TryOpenUrl(e.Uri.AbsoluteUri);

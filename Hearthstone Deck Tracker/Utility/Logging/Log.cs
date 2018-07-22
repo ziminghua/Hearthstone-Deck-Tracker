@@ -20,7 +20,10 @@ namespace Hearthstone_Deck_Tracker.Utility.Logging
 		private const int MaxLogFileAge = 2;
 		private const int KeepOldLogs = 25;
 		private static readonly Queue<string> LogQueue = new Queue<string>();
+		private static string _prevLine;
+		private static int _duplicateCount;
 		public static bool Initialized { get; private set; }
+		public static string CurrentLogFile { get; private set; }
 
 		internal static void Initialize()
 		{
@@ -72,7 +75,8 @@ namespace Hearthstone_Deck_Tracker.Utility.Logging
 			}
 			try
 			{
-				Trace.Listeners.Add(new TextWriterTraceListener(new StreamWriter(logFile, false)));	
+				Trace.Listeners.Add(new TextWriterTraceListener(new StreamWriter(logFile, false)));
+				CurrentLogFile = logFile;
 			}
 			catch (Exception ex)
 			{
@@ -91,7 +95,23 @@ namespace Hearthstone_Deck_Tracker.Utility.Logging
 				return;
 #endif
 			var file = sourceFilePath?.Split('/', '\\').LastOrDefault()?.Split('.').FirstOrDefault();
-			var line = $"{DateTime.Now.ToLongTimeString()}|{type}|{file}.{memberName} >> {msg}";
+			var line = $"{type}|{file}.{memberName} >> {msg}";
+
+			if(line == _prevLine)
+				_duplicateCount++;
+			else
+			{
+				if(_duplicateCount > 0)
+					Write($"... {_duplicateCount} duplicate messages");
+				_prevLine = line;
+				_duplicateCount = 0;
+				Write(line);
+			}
+		}
+
+		private static void Write(string line)
+		{
+			line = $"{DateTime.Now.ToLongTimeString()}|{line}";
 			if(Initialized)
 				Trace.WriteLine(line);
 			else

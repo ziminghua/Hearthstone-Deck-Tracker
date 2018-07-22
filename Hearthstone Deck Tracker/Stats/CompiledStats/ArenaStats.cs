@@ -1,4 +1,4 @@
-﻿#region
+#region
 
 using System;
 using System.Collections.Generic;
@@ -31,6 +31,16 @@ namespace Hearthstone_Deck_Tracker.Stats.CompiledStats
 		public int PacksCountTgt => GetFilteredRuns().Sum(x => x.Packs.Count(p => p == ArenaRewardPacks.TheGrandTournament));
 
 		public int PacksCountWotog => GetFilteredRuns().Sum(x => x.Packs.Count(p => p == ArenaRewardPacks.WhispersOfTheOldGods));
+
+		public int PacksCountMsg => GetFilteredRuns().Sum(x => x.Packs.Count(p => p == ArenaRewardPacks.MeanStreetsOfGadgetzan));
+
+		public int PacksCountUngoro => GetFilteredRuns().Sum(x => x.Packs.Count(p => p == ArenaRewardPacks.JourneyToUngoro));
+
+		public int PacksCountIcecrown => GetFilteredRuns().Sum(x => x.Packs.Count(p => p == ArenaRewardPacks.KnightsOfTheFrozenThrone));
+
+		public int PacksCountLoot => GetFilteredRuns().Sum(x => x.Packs.Count(p => p == ArenaRewardPacks.Loot));
+
+		public int PacksCountGilneas => GetFilteredRuns().Sum(x => x.Packs.Count(p => p == ArenaRewardPacks.Gilneas));
 
 		public int PacksCountTotal => GetFilteredRuns().Sum(x => x.PackCount);
 
@@ -87,7 +97,7 @@ namespace Hearthstone_Deck_Tracker.Stats.CompiledStats
 				    x =>
 					new ChartStats
 					{
-						Name = x.Key + " (" + Math.Round(100.0 * x.Count() / ArenaDecks.Count()) + "%)",
+						Name = x.Key + " (" + Math.Round(100.0 * x.Count() / RunsCount) + "%)",
 						Value = x.Count(),
 						Brush = new SolidColorBrush(Helper.GetClassColor(x.Key, true))
 					});
@@ -246,7 +256,7 @@ namespace Hearthstone_Deck_Tracker.Stats.CompiledStats
 						}
 						break;
 					case DisplayedTimeFrame.ThisWeek:
-						filtered = filtered.Where(g => g.StartTime > DateTime.Today.AddDays(-((int)g.StartTime.DayOfWeek + 1)));
+						filtered = filtered.Where(g => g.StartTime > DateTimeHelper.StartOfWeek);
 						break;
 					case DisplayedTimeFrame.Today:
 						filtered = filtered.Where(g => g.StartTime > DateTime.Today);
@@ -313,6 +323,10 @@ namespace Hearthstone_Deck_Tracker.Stats.CompiledStats
 			OnPropertyChanged(nameof(PacksCountGvg));
 			OnPropertyChanged(nameof(PacksCountTgt));
 			OnPropertyChanged(nameof(PacksCountWotog));
+			OnPropertyChanged(nameof(PacksCountMsg));
+			OnPropertyChanged(nameof(PacksCountUngoro));
+			OnPropertyChanged(nameof(PacksCountIcecrown));
+			OnPropertyChanged(nameof(PacksCountLoot));
 			OnPropertyChanged(nameof(PacksCountTotal));
 			OnPropertyChanged(nameof(PacksCountAveragePerRun));
 			OnPropertyChanged(nameof(CardCountTotal));

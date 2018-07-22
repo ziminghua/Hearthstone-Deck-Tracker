@@ -10,34 +10,25 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Hearthstone_Deck_Tracker.Annotations;
 using Hearthstone_Deck_Tracker.Enums;
-using Hearthstone_Deck_Tracker.HearthStats.API;
 using Hearthstone_Deck_Tracker.Stats;
-using Hearthstone_Deck_Tracker.Utility.Extensions;
 
 #endregion
 
 namespace Hearthstone_Deck_Tracker.Utility.Toasts.ToastControls
 {
-	/// <summary>
-	/// Interaction logic for GameResultToast.xaml
-	/// </summary>
-	public partial class GameResultToast : UserControl
+	public partial class GameResultToast : INotifyPropertyChanged
 	{
-		private const int ExpandedHeight = 141;
-		private const int ExpandedWidth = 350;
 		private readonly GameStats _game;
 		private bool _edited;
-		private bool _expanded;
+		private bool _showDetails;
 
 		public GameResultToast(string deckName, [NotNull] GameStats game)
 		{
-			InitializeComponent();
-			InitializeComponent();
 			DeckName = deckName;
 			_game = game;
-			ComboBoxResult.ItemsSource = new[] { GameResult.Win, GameResult.Loss };
-			ComboBoxFormat.ItemsSource = new[] { Enums.Format.Standard, Enums.Format.Wild };
-			ComboBoxGameMode.ItemsSource = new[]
+			Results = new[] { GameResult.Win, GameResult.Loss };
+			Formats = new[] { Enums.Format.Standard, Enums.Format.Wild };
+			Modes = new[]
 			{
 				GameMode.Arena,
 				GameMode.Brawl,
@@ -47,23 +38,25 @@ namespace Hearthstone_Deck_Tracker.Utility.Toasts.ToastControls
 				GameMode.Ranked,
 				GameMode.Spectator
 			};
+			InitializeComponent();
 		}
 
-		public string DeckName { get; set; }
+		public GameMode[] Modes { get; }
+
+		public Format[] Formats { get; }
+
+		public GameResult[] Results { get; }
+
+		public string DeckName { get; }
 
 		public HeroClassWrapper Opponent
 		{
-			get
-			{
-				HeroClass heroClass;
-				return Enum.TryParse(_game.OpponentHero, out heroClass) ? new HeroClassWrapper(heroClass) : null;
-			}
+			get => Enum.TryParse(_game.OpponentHero, out HeroClass heroClass) ? new HeroClassWrapper(heroClass) : null;
 			set
 			{
 				if(value == null)
 					return;
-				HeroClass heroClass;
-				if(!Enum.TryParse(value.Class, out heroClass))
+				if(!Enum.TryParse(value.Class, out HeroClass heroClass))
 					return;
 				_game.OpponentHero = heroClass.ToString();
 				_edited = true;
@@ -74,7 +67,7 @@ namespace Hearthstone_Deck_Tracker.Utility.Toasts.ToastControls
 
 		public Format? Format
 		{
-			get { return _game.Format; }
+			get => _game.Format;
 			set
 			{
 				_game.Format = value;
@@ -84,7 +77,7 @@ namespace Hearthstone_Deck_Tracker.Utility.Toasts.ToastControls
 
 		public GameMode Mode
 		{
-			get { return _game.GameMode; }
+			get => _game.GameMode;
 			set
 			{
 				_game.GameMode = value;
@@ -95,7 +88,7 @@ namespace Hearthstone_Deck_Tracker.Utility.Toasts.ToastControls
 
 		public GameResult Result
 		{
-			get { return _game.Result; }
+			get => _game.Result;
 			set
 			{
 				_game.Result = value;
@@ -105,6 +98,16 @@ namespace Hearthstone_Deck_Tracker.Utility.Toasts.ToastControls
 
 		public BitmapImage PlayerClassImage => ImageCache.GetClassIcon(_game.PlayerHero);
 
+		public bool ShowDetails
+		{
+			get => _showDetails;
+			set
+			{
+				_showDetails = value; 
+				OnPropertyChanged();
+			}
+		}
+
 		private void RectangleSettings_OnMouseDown(object sender, MouseButtonEventArgs e)
 		{
 			Core.MainWindow.FlyoutOptions.IsOpen = true;
@@ -112,56 +115,12 @@ namespace Hearthstone_Deck_Tracker.Utility.Toasts.ToastControls
 			Core.MainWindow.ActivateWindow();
 		}
 
-		private void PanelSummary_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => Expand();
-
-		private void Expand()
-		{
-			if(_expanded)
-				return;
-			_expanded = true;
-			PanelSummary.Visibility = Visibility.Collapsed;
-			PanelDetailHeader.Visibility = Visibility.Visible;
-			PanelDetailBody.Visibility = Visibility.Visible;
-			Height = ExpandedHeight;
-			Width = ExpandedWidth;
-		}
+		private void PanelSummary_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => ShowDetails = true;
 
 		private void GameResultToast_OnUnloaded(object sender, RoutedEventArgs e)
 		{
-			if(!_edited)
-				return;
-			DeckStatsList.Save();
-			if(!Config.Instance.HearthStatsAutoUploadNewGames || !HearthStatsAPI.IsLoggedIn)
-				return;
-			var deck = DeckList.Instance.Decks.FirstOrDefault(d => d.DeckId == _game.DeckId);
-			if(deck == null)
-				return;
-			if(_game.HasHearthStatsId)
-			{
-				if(_game.GameMode == GameMode.Arena)
-					HearthStatsManager.UpdateArenaMatchAsync(_game, deck, true, true);
-				else
-					HearthStatsManager.UpdateMatchAsync(_game, deck.GetVersion(_game.PlayerDeckVersion), true, true);
-			}
-			else
-			{
-				if(_game.GameMode == GameMode.Arena)
-					HearthStatsManager.UploadArenaMatchAsync(_game, deck, true, true).Forget();
-				else
-					HearthStatsManager.UploadMatchAsync(_game, deck.GetVersion(_game.PlayerDeckVersion), true, true).Forget();
-			}
-		}
-
-		private void GameResultToast_OnMouseEnter(object sender, MouseEventArgs e)
-		{
-			if(!_expanded && Cursor != Cursors.Wait)
-				Cursor = Cursors.Hand;
-		}
-
-		private void GameResultToast_OnMouseLeave(object sender, MouseEventArgs e)
-		{
-			if(Cursor != Cursors.Wait)
-				Cursor = Cursors.Arrow;
+			if(_edited)
+				DeckStatsList.Save();
 		}
 
 		private void RectangleClose_OnMouseDown(object sender, MouseButtonEventArgs e) => ToastManager.ForceCloseToast(this);
@@ -177,11 +136,7 @@ namespace Hearthstone_Deck_Tracker.Utility.Toasts.ToastControls
 
 			public string Class { get; }
 
-			public override bool Equals(object obj)
-			{
-				var hcw = obj as HeroClassWrapper;
-				return hcw != null && Equals(hcw);
-			}
+			public override bool Equals(object obj) => obj is HeroClassWrapper hcw && Equals(hcw);
 
 			protected bool Equals(HeroClassWrapper other) => string.Equals(Class, other.Class);
 

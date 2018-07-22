@@ -13,17 +13,19 @@ using System.Windows.Data;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Xps.Serialization;
 using Hearthstone_Deck_Tracker.Annotations;
 using Hearthstone_Deck_Tracker.Controls.DeckPicker.DeckPickerItemLayouts;
 using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.Hearthstone;
 using Hearthstone_Deck_Tracker.Utility;
+using Hearthstone_Deck_Tracker.Utility.Extensions;
 using Hearthstone_Deck_Tracker.Utility.Logging;
 using static System.ComponentModel.ListSortDirection;
 using static System.Windows.Visibility;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using ListView = System.Windows.Controls.ListView;
+using Hearthstone_Deck_Tracker.Windows;
+using DeckType = Hearthstone_Deck_Tracker.Enums.DeckType;
 
 #endregion
 
@@ -39,12 +41,12 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 
 		public delegate void DoubleClickHandler(DeckPicker sender, Deck deck);
 
-		public delegate void SelectedDeckHandler(DeckPicker sender, Deck deck);
+		public delegate void SelectedDeckHandler(DeckPicker sender, List<Deck> deck);
 
 		private readonly DeckPickerClassItem _archivedClassItem;
 		private readonly Dictionary<Deck, DeckPickerItem> _cachedDeckPickerItems = new Dictionary<Deck, DeckPickerItem>();
 		private readonly ObservableCollection<DeckPickerClassItem> _classItems;
-		private readonly ObservableCollection<DeckPickerItem> _displayedDecks;
+		private readonly List<DeckPickerItem> _displayedDecks;
 		private bool _clearingClasses;
 		private ObservableCollection<DeckType> _deckTypeItems;
 		private bool _ignoreSelectionChange;
@@ -64,21 +66,25 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 			_classItems.Remove(_archivedClassItem);
 			ListViewClasses.ItemsSource = _classItems;
 			SelectedClasses = new ObservableCollection<HeroClassAll>();
-			_displayedDecks = new ObservableCollection<DeckPickerItem>();
-			ListViewDecks.ItemsSource = _displayedDecks;
-			DeckTypeItems = new ObservableCollection<DeckType>(Enum.GetValues(typeof(DeckType)).OfType<DeckType>().Take(4));
+			_displayedDecks = new List<DeckPickerItem>();
 		}
 
-		public List<Deck> SelectedDecks
-		{
-			get { return ListViewDecks.SelectedItems.Cast<DeckPickerItem>().Select(x => x.Deck).ToList(); }
-		}
+		public List<DeckPickerItem> DisplayedDecks => _displayedDecks;
+
+		public List<Deck> SelectedDecks => ListViewDecks.SelectedItems.Cast<DeckPickerItem>().Select(x => x.Deck).ToList();
 
 		public ObservableCollection<HeroClassAll> SelectedClasses { get; }
 
+		public void ReloadUI()
+		{
+			_deckTypeItems = null;
+			OnPropertyChanged(nameof(DeckTypeItems));
+			RefreshDisplayedDecks();
+		}
+
 		public bool ArchivedClassVisible
 		{
-			get { return _archivedClassVisible; }
+			get => _archivedClassVisible;
 			set
 			{
 				_archivedClassVisible = value;
@@ -88,7 +94,7 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 
 		public bool SearchBarVisibile
 		{
-			get { return _searchBarVisibile; }
+			get => _searchBarVisibile;
 			set
 			{
 				_searchBarVisibile = value;
@@ -103,15 +109,7 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 
 		public Visibility VisibilitySearchBar => SearchBarVisibile ? Visible : Collapsed;
 
-		public ObservableCollection<DeckType> DeckTypeItems
-		{
-			get { return _deckTypeItems; }
-			set
-			{
-				_deckTypeItems = value;
-				OnPropertyChanged();
-			}
-		}
+		public ObservableCollection<DeckType> DeckTypeItems => _deckTypeItems ?? (_deckTypeItems = new ObservableCollection<DeckType>(Enum.GetValues(typeof(DeckType)).OfType<DeckType>().Distinct().Take(6)));
 
 		public Deck ActiveDeck => DeckList.Instance.ActiveDeck;
 
@@ -150,8 +148,7 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 				senderList.UnselectAll();
 				foreach(var item in senderList.Items)
 				{
-					var dpci = item as DeckPickerClassItem;
-					if(dpci != null)
+					if(item is DeckPickerClassItem dpci)
 					{
 						var hca = (HeroClassAll)dpci.DataContext;
 
@@ -263,19 +260,23 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 
 		private void SelectPickerClassItem(DeckPickerClassItem dpci)
 		{
+#pragma warning disable IDE0019
 			var heroClass = dpci.DataContext as HeroClassAll?;
 			if(heroClass != null && !SelectedClasses.Contains(heroClass.Value))
 			{
 				SelectedClasses.Add(heroClass.Value);
 				dpci.OnSelected();
 			}
+#pragma warning restore IDE0019
 		}
 
 		private void DeselectPickerClassItem(DeckPickerClassItem dpci)
 		{
+#pragma warning disable IDE0019
 			var heroClass = dpci.DataContext as HeroClassAll?;
 			if(heroClass != null && SelectedClasses.Remove(heroClass.Value))
 				dpci.OnDelselected();
+#pragma warning restore IDE0019
 		}
 
 		private static IEnumerable<HeroClassAll?> PickerClassItemsAsEnum(IEnumerable<DeckPickerClassItem> items)
@@ -337,20 +338,24 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 			{
 				var dpi = GetDeckPickerItemFromCache(deck);
 				if(dpi != null)
+				{
 					_displayedDecks.Add(dpi);
+					dpi.RefreshProperties();
+				}
 			}
 			Sort();
+			OnPropertyChanged(nameof(DisplayedDecks));
 			if(selectedDeck != null && reselectActiveDeck && decks.Contains(selectedDeck))
 				SelectDeck(selectedDeck);
 			ActiveDeck?.StatsUpdated();
+			selectedDeck?.StatsUpdated();
 		}
 
 		private DeckPickerItem GetDeckPickerItemFromCache(Deck deck)
 		{
 			if(deck == null)
 				return null;
-			DeckPickerItem dpi;
-			if(_cachedDeckPickerItems.TryGetValue(deck, out dpi))
+			if(_cachedDeckPickerItems.TryGetValue(deck, out var dpi))
 				return dpi;
 			Type layout;
 			switch(Config.Instance.DeckPickerItemLayout)
@@ -396,20 +401,36 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 			}
 		}
 
+		private bool IsConstructedDeck(Deck deck) => !deck.IsBrawlDeck && !deck.IsDungeonDeck && !deck.IsArenaDeck;
+
 		private bool DeckMatchesSelectedDeckType(Deck deck)
 		{
-			if(Config.Instance.SelectedDeckPickerDeckType == DeckType.All)
-				return true;
-			return Config.Instance.SelectedDeckPickerDeckType == DeckType.Arena && deck.IsArenaDeck 
-				|| (!deck.IsArenaDeck 
-					&& ((Config.Instance.SelectedDeckPickerDeckType == DeckType.Standard && deck.StandardViable)
-						|| Config.Instance.SelectedDeckPickerDeckType == DeckType.Wild && (Config.Instance.DeckPickerWildIncludesStandard || !deck.StandardViable)));
+			switch(Config.Instance.SelectedDeckPickerDeckType)
+			{
+				case DeckType.All:
+					return true;
+				case DeckType.Arena:
+					return deck.IsArenaDeck;
+				case DeckType.Dungeon:
+					return deck.IsDungeonDeck;
+				case DeckType.Brawl:
+					return deck.IsBrawlDeck;
+				case DeckType.Standard:
+					return IsConstructedDeck(deck) && deck.StandardViable;
+				case DeckType.Wild:
+					return IsConstructedDeck(deck) && (Config.Instance.DeckPickerWildIncludesStandard || !deck.StandardViable);
+				default:
+					return false;
+			}
 		}
 
 		public void Sort()
 		{
-			var view = (CollectionView)CollectionViewSource.GetDefaultView(ListViewDecks.ItemsSource);
+			var view = (CollectionView)CollectionViewSource.GetDefaultView(DisplayedDecks);
 			view.SortDescriptions.Clear();
+			if(Config.Instance.SortDecksFavoritesFirst)
+				view.SortDescriptions.Add(new SortDescription("Favorite", Descending));
+
 			if(Config.Instance.SortDecksByClass && Config.Instance.SelectedDeckPickerDeckType != DeckType.Arena
 			   || Config.Instance.SortDecksByClassArena && Config.Instance.SelectedDeckPickerDeckType == DeckType.Arena)
 				view.SortDescriptions.Add(new SortDescription("Class", Ascending));
@@ -418,6 +439,9 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 				                  ? Config.Instance.SelectedDeckSortingArena : Config.Instance.SelectedDeckSorting;
 			switch(deckSorting)
 			{
+				case "Most Played":
+					view.SortDescriptions.Add(new SortDescription("NumGames", Descending));
+					break;
 				case "Name":
 					view.SortDescriptions.Add(new SortDescription("DeckName", Ascending));
 					break;
@@ -448,8 +472,7 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 				foreach(var deck in e.RemovedItems.Cast<DeckPickerItem>())
 					deck.RefreshProperties();
 			}
-			if(e.AddedItems.Count > 0)
-				OnSelectedDeckChanged?.Invoke(this, SelectedDecks.FirstOrDefault());
+			OnSelectedDeckChanged?.Invoke(this, SelectedDecks);
 		}
 
 		public void SelectDeckAndAppropriateView(Deck deck)
@@ -459,27 +482,19 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 			ClearFromCache(deck);
 			if(Config.Instance.SelectedDeckPickerDeckType != DeckType.All)
 			{
-				if(deck.IsArenaDeck && Config.Instance.SelectedDeckPickerDeckType != DeckType.Arena)
+				if(deck.IsArenaDeck)
 					SelectDeckType(DeckType.Arena);
-				else if(!deck.IsArenaDeck)
-				{
-					if(deck.StandardViable && Config.Instance.SelectedDeckPickerDeckType != DeckType.Standard)
-						SelectDeckType(DeckType.Standard);
-					else if(!deck.StandardViable && Config.Instance.SelectedDeckPickerDeckType != DeckType.Wild)
-						SelectDeckType(DeckType.Wild);
-				}
+				else if(deck.IsDungeonDeck)
+					SelectDeckType(DeckType.Dungeon);
+				else if(deck.IsBrawlDeck)
+					SelectDeckType(DeckType.Brawl);
+				else if(IsConstructedDeck(deck))
+					SelectDeckType(deck.StandardViable ? DeckType.Standard : DeckType.Wild);
 			}
 			if(deck.Archived && !SelectedClasses.Contains(HeroClassAll.Archived))
 				SelectClass(HeroClassAll.Archived);
-			else if(!SelectedClasses.Contains(HeroClassAll.All))
-			{
-				HeroClassAll deckClass;
-				if(Enum.TryParse(deck.Class, out deckClass))
-				{
-					if(!SelectedClasses.Contains(deckClass))
-						SelectClass(deckClass);
-				}
-			}
+			else if(!SelectedClasses.Contains(HeroClassAll.All) && Enum.TryParse(deck.Class, out HeroClassAll deckClass) && !SelectedClasses.Contains(deckClass))
+				SelectClass(deckClass);
 
 			if(!DeckMatchesSelectedTags(deck))
 			{
@@ -527,8 +542,7 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 						SelectClass(HeroClassAll.Archived);
 					else
 					{
-						HeroClassAll heroClass;
-						if(Enum.TryParse(deck.Class, out heroClass))
+						if(Enum.TryParse(deck.Class, out HeroClassAll heroClass))
 							SelectClass(heroClass);
 					}
 
@@ -601,6 +615,8 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 
 		public void SelectDeckType(DeckType selectedDeckType, bool ignoreSelectionChange = false)
 		{
+			if(ListViewDeckType.SelectedIndex == (int)selectedDeckType)
+				return;
 			if(ignoreSelectionChange)
 				_ignoreSelectionChange = true;
 			ListViewDeckType.SelectedIndex = (int)selectedDeckType;
@@ -655,28 +671,32 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 			MenuItemArchive.Visibility = selectedDecks.Any(d => !d.Archived) ? Visible : Collapsed;
 			MenuItemUnarchive.Visibility = selectedDecks.Any(d => d.Archived) ? Visible : Collapsed;
 			SeparatorDeck1.Visibility = selectedDecks.First().IsArenaDeck ? Collapsed : Visible;
-			MenuItemOpenHearthStats.Visibility = selectedDecks.First().HasHearthStatsId ? Visible : Collapsed;
 			MenuItemUseDeck.Visibility =
 				SeparatorUseDeck.Visibility =
 				selectedDecks.First().Equals(DeckList.Instance.ActiveDeck) ? Collapsed : Visible;
+			MenuItemExportDeck.Visibility = selectedDecks.First().IsArenaDeck ? Collapsed : Visible;
+			MenuItemVersionHistory.Visibility = selectedDecks.First().HasVersions ? Visible : Collapsed;
 		}
 
-		private void BtnEditDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnEditDeck_Click(sender, e);
-		private void BtnNotes_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnNotes_Click(sender, e);
-		private void BtnTags_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnTags_Click(sender, e);
-		private void BtnMoveDeckToArena_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnMoveDeckToArena_Click(sender, e);
-		private void BtnMoveDeckToConstructed_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnMoveDeckToConstructed_Click(sender, e);
-		private void MenuItemMissingDust_OnClick(object sender, RoutedEventArgs e) => Core.MainWindow.MenuItemMissingDust_OnClick(sender, e);
-		private void BtnSetDeckUrl_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnSetDeckUrl_Click(sender, e);
-		private void BtnUpdateDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnUpdateDeck_Click(sender, e);
-		private void BtnOpenDeckUrl_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnOpenDeckUrl_Click(sender, e);
-		private void BtnArchiveDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnArchiveDeck_Click(sender, e);
-		private void BtnUnarchiveDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnUnarchiveDeck_Click(sender, e);
-		private void BtnDeleteDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnDeleteDeck_Click(sender, e);
-		private void BtnCloneDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnCloneDeck_Click(sender, e);
-		private void BtnCloneSelectedVersion_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnCloneSelectedVersion_Click(sender, e);
-		private void BtnName_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnName_Click(sender, e);
-		private void BtnOpenHearthStats_Click(object sender, RoutedEventArgs e) => Core.MainWindow.BtnOpenHearthStats_Click(sender, e);
+
+		private void BtnEditDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowDeckEditorFlyout(SelectedDecks.FirstOrDefault(), false);
+		private void BtnNotes_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowDeckNotesDialog(SelectedDecks.FirstOrDefault());
+		private void BtnTags_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowTagEditDialog(SelectedDecks);
+		private void BtnMoveDeckToArena_Click(object sender, RoutedEventArgs e) => Core.MainWindow.MoveDecksToArena(SelectedDecks);
+		private void BtnMoveDeckToConstructed_Click(object sender, RoutedEventArgs e) => Core.MainWindow.MoveDecksToConstructed(SelectedDecks);
+		private void MenuItemMissingDust_OnClick(object sender, RoutedEventArgs e) => Core.MainWindow.ShowMissingCardsMessage(SelectedDecks.FirstOrDefault(), false).Forget();
+		private void BtnSetDeckUrl_Click(object sender, RoutedEventArgs e) => Core.MainWindow.SetDeckUrl(SelectedDecks.FirstOrDefault());
+		private void BtnUpdateDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.UpdateDeckFromWeb(SelectedDecks.FirstOrDefault());
+		private void BtnOpenDeckUrl_Click(object sender, RoutedEventArgs e) => Core.MainWindow.OpenDeckUrl(SelectedDecks.FirstOrDefault());
+		private void BtnArchiveDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ArchiveDecks(SelectedDecks);
+		private void BtnUnarchiveDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.UnArchiveDecks(SelectedDecks);
+		private void BtnDeleteDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowDeleteDecksMessage(SelectedDecks);
+		private void BtnCloneDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowCloneDeckDialog(SelectedDecks.FirstOrDefault());
+		private void BtnCloneSelectedVersion_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowCloneDeckVersionDialog(SelectedDecks.FirstOrDefault());
+		private void BtnName_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowEditDeckNameDialog(SelectedDecks.FirstOrDefault());
+		private void BtnExportDeck_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowExportFlyout(SelectedDecks.FirstOrDefault());
+		private void BtnScreenshotCards_Click(object sender, RoutedEventArgs e) => Core.MainWindow.ShowScreenshotFlyout();
+		private void MenuItemVersionHistory_OnClick(object sender, RoutedEventArgs e) => Core.MainWindow.ShowDeckHistoryFlyout();
 
 		private void ActiveDeckPanel_OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
 		{
@@ -713,29 +733,11 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 			UpdateDeckModeToggleButton();
 		}
 
-		private void BorderAutoSelect_PreviewLeftMouseButtonUp(object sender, MouseButtonEventArgs e)
-		{
-			Core.MainWindow.AutoDeckDetection(!Config.Instance.AutoDeckDetection);
-			UpdateAutoSelectToggleButton();
-		}
-
-		public void UpdateAutoSelectToggleButton()
-		{
-			OnPropertyChanged(nameof(BorderAutoSelectBackground));
-			OnPropertyChanged(nameof(BorderAutoSelectTextBrush));
-		}
-
 		public void UpdateDeckModeToggleButton()
 		{
 			OnPropertyChanged(nameof(BorderDeckModeBackground));
 			OnPropertyChanged(nameof(BorderDeckModeTextBrush));
 		}
-
-		public SolidColorBrush BorderAutoSelectBackground
-			=> Config.Instance.AutoDeckDetection ? (SolidColorBrush)FindResource("AccentColorBrush") : new SolidColorBrush(Colors.Transparent);
-
-		public SolidColorBrush BorderAutoSelectTextBrush
-			=> Config.Instance.AutoDeckDetection ? new SolidColorBrush(Colors.White) : (SolidColorBrush)FindResource("TextBrush");
 
 		public SolidColorBrush BorderDeckModeBackground
 			=> DeckList.Instance.ActiveDeck == null ? (SolidColorBrush)FindResource("AccentColorBrush") : new SolidColorBrush(Colors.Transparent);
@@ -746,7 +748,7 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 		private void ListViewDecks_OnKeyUp(object sender, KeyEventArgs e)
 		{
 			if(e.Key == Key.Delete)
-				Core.MainWindow.BtnDeleteDeck_Click(sender, e);
+				Core.MainWindow.ShowDeleteDecksMessage(SelectedDecks);
 		}
 
 		private void ListViewDecks_OnPreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)

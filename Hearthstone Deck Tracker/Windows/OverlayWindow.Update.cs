@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
-using HearthDb;
 using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.Enums.Hearthstone;
 using Hearthstone_Deck_Tracker.Utility;
@@ -17,15 +18,38 @@ namespace Hearthstone_Deck_Tracker.Windows
 {
 	public partial class OverlayWindow
 	{
+		private async void SetTopmost()
+		{
+			if(User32.GetHearthstoneWindow() == IntPtr.Zero)
+			{
+				Log.Info("Hearthstone window not found");
+				return;
+			}
+
+			for(var i = 0; i < 20; i++)
+			{
+				var isTopmost = User32.IsTopmost(new WindowInteropHelper(this).Handle);
+				if(isTopmost)
+				{
+					Log.Info($"Overlay is topmost after {i + 1} tries.");
+					return;
+				}
+
+				Topmost = false;
+				Topmost = true;
+				await Task.Delay(250);
+			}
+
+			Log.Info("Could not set overlay as topmost");
+		}
+
 		public void Update(bool refresh)
 		{
 			if (refresh)
 			{
 				ListViewPlayer.Items.Refresh();
 				ListViewOpponent.Items.Refresh();
-				Topmost = false;
-				Topmost = true;
-				Log.Info("Refreshed overlay topmost status");
+				SetTopmost();
 			}
 
 			var opponentHandCount = _game.Opponent.HandCount;
@@ -36,15 +60,18 @@ namespace Hearthstone_Deck_Tracker.Windows
 					var entity = _game.Opponent.Hand.FirstOrDefault(x => x.GetTag(ZONE_POSITION) == i + 1);
 					if(entity == null)
 						continue;
-					_cardMarks[i].Text = !Config.Instance.HideOpponentCardAge ? entity.Info.Turn.ToString() : "";
+					if(!Config.Instance.HideOpponentCardAge)
+						_cardMarks[i].UpdateCardAge(entity.Info.Turn);
+					else 
+						_cardMarks[i].UpdateCardAge(null);
 					if(!Config.Instance.HideOpponentCardMarks)
 					{
-						_cardMarks[i].Mark = entity.Info.CardMark;
-						_cardMarks[i].SetCostReduction(entity.Info.CostReduction);
+						_cardMarks[i].UpdateIcon(entity.Info.CardMark);
+						_cardMarks[i].UpdateCostReduction(entity.Info.CostReduction);
 					}
 					else
-						_cardMarks[i].Mark = CardMark.None;
-					_cardMarks[i].Visibility = (_game.IsInMenu || (Config.Instance.HideOpponentCardAge && Config.Instance.HideOpponentCardMarks))
+						_cardMarks[i].UpdateIcon(CardMark.None);
+					_cardMarks[i].Visibility = _game.IsInMenu || Config.Instance.HideOpponentCardAge && Config.Instance.HideOpponentCardMarks
 												   ? Hidden : Visible;
 				}
 				else
@@ -90,7 +117,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			ListViewOpponent.Visibility = Config.Instance.HideOpponentCards ? Collapsed : Visible;
 			ListViewPlayer.Visibility = Config.Instance.HidePlayerCards ? Collapsed : Visible;
 
-			var gameStarted = !_game.IsInMenu && _game.Entities.Count >= 67 && _game.Player.PlayerEntities.Any();
+			var gameStarted = !_game.IsInMenu && _game.SetupDone && _game.Player.PlayerEntities.Any();
 			SetCardCount(_game.Player.HandCount, !gameStarted ? 30 : _game.Player.DeckCount);
 
 			SetOpponentCardCount(_game.Opponent.HandCount, !gameStarted ? 30 : _game.Opponent.DeckCount);
@@ -143,7 +170,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			IconBoardAttackOpponent.Visibility = Config.Instance.HideOpponentAttackIcon || _game.IsInMenu ? Collapsed : Visible;
 
 			// do the calculation if at least one of the icons is visible
-			if (_game.Entities.Count > 67 && (IconBoardAttackPlayer.Visibility == Visible || IconBoardAttackOpponent.Visibility == Visible))
+			if (_game.SetupDone && (IconBoardAttackPlayer.Visibility == Visible || IconBoardAttackOpponent.Visibility == Visible))
 			{
 				var board = new BoardState();
 				TextBlockPlayerAttack.Text = board.Player.Damage.ToString();
@@ -153,6 +180,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 
 			var showPlayerCthunCounter = WotogCounterHelper.ShowPlayerCthunCounter;
 			var showPlayerSpellsCounter = WotogCounterHelper.ShowPlayerSpellsCounter;
+			var showPlayerJadeCounter = WotogCounterHelper.ShowPlayerJadeCounter;
 			if(showPlayerCthunCounter)
 			{
 				var proxy = WotogCounterHelper.PlayerCthunProxy;
@@ -161,10 +189,14 @@ namespace Hearthstone_Deck_Tracker.Windows
 			}
 			if(showPlayerSpellsCounter)
 				WotogIconsPlayer.Spells = _game.Player.SpellsPlayedCount.ToString();
+			if(showPlayerJadeCounter)
+				WotogIconsPlayer.Jade = WotogCounterHelper.PlayerNextJadeGolem.ToString();
 			WotogIconsPlayer.WotogCounterStyle = showPlayerCthunCounter && showPlayerSpellsCounter ? Full : (showPlayerCthunCounter ? Cthun : (showPlayerSpellsCounter ? Spells : None));
+			WotogIconsPlayer.JadeCounterStyle = showPlayerJadeCounter ? Full : None;
 
 			var showOpponentCthunCounter = WotogCounterHelper.ShowOpponentCthunCounter;
 			var showOpponentSpellsCounter = WotogCounterHelper.ShowOpponentSpellsCounter;
+			var showOpponentJadeCounter = WotogCounterHelper.ShowOpponentJadeCounter;
 			if(showOpponentCthunCounter)
 			{
 				var proxy = WotogCounterHelper.OpponentCthunProxy;
@@ -173,7 +205,10 @@ namespace Hearthstone_Deck_Tracker.Windows
 			}
 			if(showOpponentSpellsCounter)
 				WotogIconsOpponent.Spells = _game.Opponent.SpellsPlayedCount.ToString();
+			if(showOpponentJadeCounter)
+				WotogIconsOpponent.Jade = WotogCounterHelper.OpponentNextJadeGolem.ToString();
 			WotogIconsOpponent.WotogCounterStyle = showOpponentCthunCounter && showOpponentSpellsCounter ? Full : (showOpponentCthunCounter ? Cthun : (showOpponentSpellsCounter ? Spells : None));
+			WotogIconsOpponent.JadeCounterStyle = showOpponentJadeCounter ? Full : None;
 
 		}
 
@@ -287,10 +322,16 @@ namespace Hearthstone_Deck_Tracker.Windows
 				Canvas.SetLeft(GridFlavorText, Width - GridFlavorText.ActualWidth - 10);
 			}
 			var handCount = _game.Opponent.HandCount > 10 ? 10 : _game.Opponent.HandCount;
-			for (int i = 0; i < handCount; i++)
+			var opponentScaling = Config.Instance.OverlayOpponentScaling / 100;
+			var opponentOpacity = Config.Instance.OpponentOpacity / 100;
+			for (var i = 0; i < handCount; i++)
 			{
-				Canvas.SetLeft(_cardMarks[i], Helper.GetScaledXPos(_cardMarkPos[handCount - 1][i].X, (int)Width, ScreenRatio) - _cardMarks[i].ActualWidth / 2);
-				Canvas.SetTop(_cardMarks[i], Math.Max(_cardMarkPos[handCount - 1][i].Y * Height - _cardMarks[i].ActualHeight / 3, 5));
+				_cardMarks[i].Opacity = opponentOpacity;
+				_cardMarks[i].ScaleTransform = new ScaleTransform(opponentScaling, opponentScaling);
+				var width = _cardMarks[i].Width * Config.Instance.OverlayOpponentScaling / 100;
+				var height = _cardMarks[i].Height * Config.Instance.OverlayOpponentScaling / 100;
+				Canvas.SetLeft(_cardMarks[i], Helper.GetScaledXPos(_cardMarkPos[handCount - 1][i].X, (int)Width, ScreenRatio) - width / 2);
+				Canvas.SetTop(_cardMarks[i], Math.Max(_cardMarkPos[handCount - 1][i].Y * Height - height / 3, 5));
 			}
 		}
 
@@ -308,7 +349,6 @@ namespace Hearthstone_Deck_Tracker.Windows
 			GPLeftCol.Width = new GridLength(GoldFrameHeight);
 			GPRightCol.Width = new GridLength(GoldFrameHeight);
 			LblGoldProgress.Margin = new Thickness(GoldFrameHeight * 1.2, 0, GoldFrameHeight * 0.8, 0);
-			LblGoldProgress.FontSize = Height * 0.017;
 			
 			//Scale attack icons, with height
 			var atkWidth = (int)Math.Round(Height * 0.0695, 0);
@@ -318,14 +358,19 @@ namespace Hearthstone_Deck_Tracker.Windows
 			IconBoardAttackPlayer.Height = atkWidth;
 			TextBlockPlayerAttack.Width = atkWidth;
 			TextBlockPlayerAttack.Height = atkWidth;
-			TextBlockPlayerAttack.FontSize = atkFont;
 			IconBoardAttackOpponent.Width = atkWidth;
 			IconBoardAttackOpponent.Height = atkWidth;
 			TextBlockOpponentAttack.Width = atkWidth;
 			TextBlockOpponentAttack.Height = atkWidth;
-			TextBlockOpponentAttack.FontSize = atkFont;
 			TextBlockPlayerAttack.Margin = new Thickness(0, atkFontMarginTop, 0, 0);
 			TextBlockOpponentAttack.Margin = new Thickness(0, atkFontMarginTop, 0, 0);
+
+			if(Height > 0)
+			{
+				LblGoldProgress.FontSize = Height * 0.017;
+				TextBlockPlayerAttack.FontSize = atkFont;
+				TextBlockOpponentAttack.FontSize = atkFont;
+			}
 
 			var wotogSize = Math.Min(1, Height / 1800);
 			if(_wotogSize != wotogSize)
@@ -354,5 +399,6 @@ namespace Hearthstone_Deck_Tracker.Windows
 		public double GoldFrameWidth => 6 * GoldFrameHeight;
 		public double GoldFrameOffset => 85 / 25 * GoldFrameHeight;
 
+		private void OverlayWindow_OnDeactivated(object sender, EventArgs e) => SetTopmost();
 	}
 }

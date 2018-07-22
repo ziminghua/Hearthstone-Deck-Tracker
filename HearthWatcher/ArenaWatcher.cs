@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using HearthMirror.Objects;
 using HearthWatcher.EventArgs;
+using HearthWatcher.Providers;
 
 namespace HearthWatcher
 {
@@ -25,9 +26,7 @@ namespace HearthWatcher
 
 		public ArenaWatcher(IArenaProvider arenaProvider, int delay = 500)
 		{
-			if(arenaProvider == null)
-				throw new ArgumentNullException(nameof(arenaProvider));
-			_arenaProvider = arenaProvider;
+			_arenaProvider = arenaProvider ?? throw new ArgumentNullException(nameof(arenaProvider));
 			_delay = delay;
 		}
 

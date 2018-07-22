@@ -38,7 +38,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			StackPanelAdditionalTooltips.Children.Clear();
 			foreach(var id in card.EntourageCardIds)
 			{
-				var tooltip = new CardToolTip();
+				var tooltip = new CardToolTipControl();
 				tooltip.SetValue(DataContextProperty, Database.GetCardFromId(id));
 				StackPanelAdditionalTooltips.Children.Add(tooltip);
 			}
@@ -92,7 +92,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			else if(ListViewPlayer.Visibility == Visible && StackPanelPlayer.Visibility == Visible
 					&& PointInsideControl(relativePlayerDeckPos, ListViewPlayer.ActualWidth, ListViewPlayer.ActualHeight))
 			{
-				//card size = card list height / ammount of cards
+				//card size = card list height / amount of cards
 				var cardSize = ViewBoxPlayer.ActualHeight / ListViewPlayer.Items.Count;
 				var cardIndex = (int)(relativePlayerDeckPos.Y / cardSize);
 				if(cardIndex < 0 || cardIndex >= ListViewPlayer.Items.Count)
@@ -117,7 +117,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			else if(ListViewOpponent.Visibility == Visible && StackPanelOpponent.Visibility == Visible
 					&& PointInsideControl(relativeOpponentDeckPos, ListViewOpponent.ActualWidth, ListViewOpponent.ActualHeight))
 			{
-				//card size = card list height / ammount of cards
+				//card size = card list height / amount of cards
 				var cardSize = ViewBoxOpponent.ActualHeight / ListViewOpponent.Items.Count;
 				var cardIndex = (int)(relativeOpponentDeckPos.Y / cardSize);
 				if(cardIndex < 0 || cardIndex >= ListViewOpponent.Items.Count)
@@ -141,7 +141,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			else if(StackPanelSecrets.Visibility == Visible
 					&& PointInsideControl(relativeSecretsPos, StackPanelSecrets.ActualWidth, StackPanelSecrets.ActualHeight))
 			{
-				//card size = card list height / ammount of cards
+				//card size = card list height / amount of cards
 				var cardSize = StackPanelSecrets.ActualHeight / StackPanelSecrets.Children.Count;
 				var cardIndex = (int)(relativeSecretsPos.Y / cardSize);
 				if(cardIndex < 0 || cardIndex >= StackPanelSecrets.Children.Count)
@@ -168,8 +168,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 
 			if(ToolTipCard.Visibility == Visible)
 			{
-				var card = ToolTipCard.GetValue(DataContextProperty) as Card;
-				if(card != null)
+				if(ToolTipCard.GetValue(DataContextProperty) is Card card)
 				{
 					if(_lastToolTipCardId != card.Id)
 					{
@@ -225,15 +224,13 @@ namespace Hearthstone_Deck_Tracker.Windows
 			var offset = 0.0;
 			foreach(var child in stackPanel.Children)
 			{
-				var text = child as HearthstoneTextBlock;
-				if(text != null)
+				if(child is HearthstoneTextBlock text)
 					offset += text.ActualHeight;
 				else
 				{
 					if(child is ListView)
 						break;
-					var sp = child as StackPanel;
-					if(sp != null)
+					if(child is StackPanel sp)
 						offset += sp.ActualHeight;
 				}
 			}
@@ -313,7 +310,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 		{
 			try
 			{
-				if(!Config.Instance.ShowFlavorText || entity?.Card == null)
+				if(!Config.Instance.ShowFlavorText || string.IsNullOrEmpty(entity?.Card?.FormattedFlavorText))
 					return;
 				FlavorText = entity.Card.FormattedFlavorText;
 				FlavorTextCardName = entity.Card.LocalizedName;

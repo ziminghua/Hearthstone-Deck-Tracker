@@ -16,30 +16,20 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using HearthDb.Enums;
-using Hearthstone_Deck_Tracker.Controls;
 using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.FlyoutControls;
 using Hearthstone_Deck_Tracker.Hearthstone;
-using Hearthstone_Deck_Tracker.Utility;
 using Hearthstone_Deck_Tracker.Utility.Extensions;
 using Hearthstone_Deck_Tracker.Utility.Logging;
-using Hearthstone_Deck_Tracker.Windows;
-using MahApps.Metro;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using Microsoft.Win32;
 using Newtonsoft.Json;
-using WPFLocalizeExtension.Engine;
-using Application = System.Windows.Application;
 using Card = Hearthstone_Deck_Tracker.Hearthstone.Card;
-using Color = System.Drawing.Color;
 using MediaColor = System.Windows.Media.Color;
-using Point = System.Drawing.Point;
 using Region = Hearthstone_Deck_Tracker.Enums.Region;
 using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
@@ -82,13 +72,14 @@ namespace Hearthstone_Deck_Tracker
 			"esES"
 		};
 
-		public static string[] WildOnlySets = new[] { CardSet.FP1, CardSet.PE1, CardSet.PROMO, CardSet.REWARD }.Select(HearthDbConverter.SetConverter).ToArray();
+		public static string[] WildOnlySets = new[]
+		{
+			CardSet.BRM, CardSet.LOE, CardSet.TGT, CardSet.HOF,
+			CardSet.FP1, CardSet.PE1, CardSet.PROMO,
+			CardSet.KARA, CardSet.OG, CardSet.GANGS
+		}.Select(HearthDbConverter.SetConverter).ToArray();
 
 		private static bool? _hearthstoneDirExists;
-
-		private static readonly Regex CardLineRegexCountFirst = new Regex(@"(^(\s*)(?<count>\d)(\s*x)?\s+)(?<cardname>[\w\s'\.:!-,]+)");
-		private static readonly Regex CardLineRegexCountLast = new Regex(@"(?<cardname>[\w\s'\.:!-,]+)(\s+(x\s*)(?<count>\d))(\s*)$");
-		private static readonly Regex CardLineRegexCountLast2 = new Regex(@"(?<cardname>[\w\s'\.:!-,]+)(\s+(?<count>\d))(\s*)$");
 
 		public static Dictionary<string, MediaColor> ClassicClassColors = new Dictionary<string, MediaColor>
 		{
@@ -121,6 +112,8 @@ namespace Hearthstone_Deck_Tracker
 		};
 
 		public static OptionsMain OptionsMain { get; set; }
+
+		public static bool UseLatinFont() => LatinLanguages.Contains(Config.Instance.SelectedLanguage) || Config.Instance.NonLatinUseDefaultFont == false;
 
 		public static bool HearthstoneDirExists
 		{
@@ -202,6 +195,7 @@ namespace Hearthstone_Deck_Tracker
 			if(classFirst)
 				view1.SortDescriptions.Add(new SortDescription(nameof(Card.IsClassCard), ListSortDirection.Descending));
 
+			view1.SortDescriptions.Add(new SortDescription(nameof(Card.HideStats), ListSortDirection.Descending));
 			view1.SortDescriptions.Add(new SortDescription(nameof(Card.Cost), ListSortDirection.Ascending));
 			view1.SortDescriptions.Add(new SortDescription(nameof(Card.LocalizedName), ListSortDirection.Ascending));
 		}
@@ -215,7 +209,7 @@ namespace Hearthstone_Deck_Tracker
 			if(Core.Overlay.IsVisible || Core.Windows.CapturableOverlay != null)
 				Core.Overlay.Update(false);
 
-			var gameStarted = !game.IsInMenu && game.Entities.Count >= 67 && game.Player.PlayerEntities.Any();
+			var gameStarted = !game.IsInMenu && game.SetupDone && game.Player.PlayerEntities.Any();
 			if(Core.Windows.PlayerWindow.IsVisible)
 				Core.Windows.PlayerWindow.SetCardCount(game.Player.HandCount, !gameStarted ? 30 : game.Player.DeckCount);
 
@@ -280,10 +274,7 @@ namespace Hearthstone_Deck_Tracker
 			=> new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).Add(TimeSpan.FromSeconds(unixTime)).ToLocalTime();
 
 		public static DateTime FromUnixTime(string unixTime)
-		{
-			long time;
-			return long.TryParse(unixTime, out time) ? FromUnixTime(time) : DateTime.Now;
-		}
+			=> long.TryParse(unixTime, out var time) ? FromUnixTime(time) : DateTime.Now;
 
 		public static Rectangle GetHearthstoneRect(bool dpiScaling) => User32.GetHearthstoneRect(dpiScaling);
 
@@ -313,86 +304,23 @@ namespace Hearthstone_Deck_Tracker
 			}
 		}
 
-		public static async Task StartHearthstoneAsync()
+		public static async Task<Region> GetCurrentRegion()
 		{
-			if(User32.GetHearthstoneWindow() != IntPtr.Zero)
-				return;
-			Core.MainWindow.BtnStartHearthstone.IsEnabled = false;
-			var useNoDeckMenuItem = Core.TrayIcon.NotifyIcon.ContextMenu.MenuItems.IndexOfKey("startHearthstone");
-			Core.TrayIcon.NotifyIcon.ContextMenu.MenuItems[useNoDeckMenuItem].Enabled = false;
-			try
+			for(var i = 0; i < 10; i++)
 			{
-				var bnetProc = Process.GetProcessesByName("Battle.net").FirstOrDefault();
-				if(bnetProc == null)
+				var accId = HearthMirror.Reflection.GetAccountId();
+				if(accId != null)
 				{
-					Process.Start("battlenet://");
-
-					var foundBnetWindow = false;
-					Core.MainWindow.TextBlockBtnStartHearthstone.Text = "STARTING LAUNCHER...";
-					for(var i = 0; i < 20; i++)
-					{
-						bnetProc = Process.GetProcessesByName("Battle.net").FirstOrDefault();
-						if(bnetProc != null && bnetProc.MainWindowHandle != IntPtr.Zero)
-						{
-							foundBnetWindow = true;
-							break;
-						}
-						await Task.Delay(500);
-					}
-					Core.MainWindow.TextBlockBtnStartHearthstone.Text = "START LAUNCHER / HEARTHSTONE";
-					if(!foundBnetWindow)
-					{
-						Core.MainWindow.ShowMessageAsync("Error starting battle.net launcher", "Could not find or start the battle.net launcher.").Forget();
-						Core.MainWindow.BtnStartHearthstone.IsEnabled = true;
-						return;
-					}
+					var region = GetRegion(accId.Hi);
+					Log.Info("Region: " + region);
+					return region;
 				}
-				await Task.Delay(2000); //just to make sure
-				Process.Start("battlenet://WTCG");
-			}
-			catch(Exception ex)
-			{
-				Log.Error(ex);
-			}
-
-			Core.TrayIcon.NotifyIcon.ContextMenu.MenuItems[useNoDeckMenuItem].Enabled = true;
-			Core.MainWindow.BtnStartHearthstone.IsEnabled = true;
-		}
-
-		public static Region GetCurrentRegion()
-		{
-			try
-			{
-				var bnetAppData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Battle.net");
-				var files = new DirectoryInfo(bnetAppData).GetFiles();
-				var config = files.OrderByDescending(x => x.LastWriteTime).FirstOrDefault(x => Regex.IsMatch(x.Name, @"\w{8}\.config"));
-				if(config == null)
-					return Region.UNKNOWN;
-				string content;
-				using(var fs = new FileStream(config.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-				using(var reader = new StreamReader(fs))
-					content = reader.ReadToEnd();
-				dynamic json = JsonConvert.DeserializeObject(content);
-				switch((string)json.User.Client.PlayScreen.GameFamily.WTCG.LastSelectedGameRegion)
-				{
-					case "EU":
-						return Region.EU;
-					case "US":
-						return Region.US;
-					case "KR":
-						return Region.ASIA;
-					case "CN":
-						return Region.CHINA;
-					default:
-						return Region.UNKNOWN;
-				}
-			}
-			catch(Exception ex)
-			{
-				Log.Error(ex);
+				await Task.Delay(2000);
 			}
 			return Region.UNKNOWN;
 		}
+
+		public static Region GetRegion(ulong accountHi) => (Region)((accountHi >> 32) & 0xFF);
 
 		private static bool FindHearthstoneDir()
 		{
@@ -415,57 +343,6 @@ namespace Hearthstone_Deck_Tracker
 			return true;
 		}
 
-		public static Deck ParseCardString(string cards, bool localizedNames = false)
-		{
-			try
-			{
-				var deck = new Deck();
-				var lines = cards.Split('\n');
-				foreach(var line in lines)
-				{
-					var count = 1;
-					var cardName = line.Trim();
-					Match match = null;
-					if(CardLineRegexCountFirst.IsMatch(cardName))
-						match = CardLineRegexCountFirst.Match(cardName);
-					else if(CardLineRegexCountLast.IsMatch(cardName))
-						match = CardLineRegexCountLast.Match(cardName);
-					else if(CardLineRegexCountLast2.IsMatch(cardName))
-						match = CardLineRegexCountLast2.Match(cardName);
-					if(match != null)
-					{
-						var tmpCount = match.Groups["count"];
-						if(tmpCount.Success)
-							count = int.Parse(tmpCount.Value);
-						cardName = match.Groups["cardname"].Value.Trim();
-					}
-
-					var card = Database.GetCardFromName(cardName.Replace("’", "'"), localizedNames);
-					if(string.IsNullOrEmpty(card?.Name) || card.Id == Database.UnknownCardId)
-						continue;
-					card.Count = count;
-
-					if(string.IsNullOrEmpty(deck.Class) && card.PlayerClass != "Neutral")
-						deck.Class = card.PlayerClass;
-
-					if(deck.Cards.Contains(card))
-					{
-						var deckCard = deck.Cards.First(c => c.Equals(card));
-						deck.Cards.Remove(deckCard);
-						deckCard.Count += count;
-						deck.Cards.Add(deckCard);
-					}
-					else
-						deck.Cards.Add(card);
-				}
-				return deck;
-			}
-			catch(Exception ex)
-			{
-				Log.Error(ex);
-				return null;
-			}
-		}
 
 
 #if(!SQUIRREL)
@@ -514,20 +391,6 @@ namespace Hearthstone_Deck_Tracker
 		}
 #endif
 
-		public static void UpdateAppTheme()
-		{
-			var theme = GetAppTheme();
-			ThemeManager.ChangeAppStyle(Application.Current, GetAppAccent(), theme);
-			Application.Current.Resources["GrayTextColorBrush"] = theme.Name == MetroTheme.BaseLight.ToString()
-																	  ? new SolidColorBrush((MediaColor)Application.Current.Resources["GrayTextColor1"])
-																	  : new SolidColorBrush((MediaColor)Application.Current.Resources["GrayTextColor2"]);
-		}
-
-		public static Accent GetAppAccent() => string.IsNullOrEmpty(Config.Instance.AccentName)
-												  ? ThemeManager.DetectAppStyle().Item2 : ThemeManager.Accents.First(a => a.Name == Config.Instance.AccentName);
-
-		public static AppTheme GetAppTheme() => ThemeManager.AppThemes.First(t => t.Name == Config.Instance.AppTheme.ToString());
-
 		public static double GetScaledXPos(double left, int width, double ratio) => (width * ratio * left) + (width * (1 - ratio) / 2);
 
 		public static MediaColor GetClassColor(string className, bool priestAsGray)
@@ -573,6 +436,19 @@ namespace Hearthstone_Deck_Tracker
 				return false;
 			}
 		}
+		public static bool IsWindows8()
+		{
+			try
+			{
+				var reg = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+				return reg != null && ((string)reg.GetValue("ProductName")).Contains("Windows 8");
+			}
+			catch (Exception ex)
+			{
+				Log.Error(ex);
+				return false;
+			}
+		}
 
 		public static bool TryOpenUrl(string url, [CallerMemberName] string memberName = "", [CallerFilePath] string sourceFilePath = "")
 		{
@@ -587,6 +463,35 @@ namespace Hearthstone_Deck_Tracker
 				Log.Error("[Helper.TryOpenUrl] " + e, memberName, sourceFilePath);
 				return false;
 			}
+		}
+
+		public static string BuildHsReplayNetUrl(string path, string campaign, IEnumerable<string> queryParams = null, IEnumerable<string> fragmentParams = null)
+		{
+			var url = "https://hsreplay.net";
+			if(!path.StartsWith("/"))
+				url += "/";
+			url += path;
+			if(!url.EndsWith("/"))
+				url += "/";
+			return url + GetHsReplayNetUrlParams(campaign, queryParams, fragmentParams);
+		}
+
+		public static string GetHsReplayNetUrlParams(string campaign, IEnumerable<string> queryParams = null, IEnumerable<string> fragmentParams = null)
+		{
+			var query = new List<string>
+			{
+				"utm_source=hdt",
+				"utm_medium=client",
+			};
+			if(!string.IsNullOrEmpty(campaign))
+				query.Add("utm_campaign=" + campaign);
+			if(queryParams != null)
+				query.AddRange(queryParams);
+			var urlParams = "?" + string.Join("&", query);
+			var fragments = fragmentParams?.ToArray();
+			if(fragments?.Any() ?? false)
+				urlParams += "#" + string.Join("&", fragments);
+			return urlParams;
 		}
 
 		private static int? _hearthstoneBuild;
@@ -615,19 +520,32 @@ namespace Hearthstone_Deck_Tracker
 			}
 		}
 
-		public static IEnumerable<T> FindLogicalChildren<T>(DependencyObject depObj) where T : DependencyObject
+		// Finds all children of depObj that are type T, recursing into matching children.
+		public static IEnumerable<T> FindLogicalChildrenDeep<T>(DependencyObject depObj) where T : DependencyObject
 		{
 			if(depObj == null)
 				yield break;
-			foreach(var child in LogicalTreeHelper.GetChildren(depObj))
+			foreach(var child in LogicalTreeHelper.GetChildren(depObj).OfType<T>())
 			{
-				var obj = child as T;
-				if(obj != null)
-					yield return obj;
-				var childDepObj = child as DependencyObject;
-				if(childDepObj == null)
+				yield return child;
+				foreach(var childOfChild in FindLogicalChildrenDeep<T>(child))
+					yield return childOfChild;
+			}
+		}
+
+		// Finds all descendants of depObj that match filter, but does not recurse into matching objects (ie will not return both a parent and its child).
+		public static IEnumerable<T> FindLogicalDescendants<T>(Func<T, bool> filter, DependencyObject depObj) where T : DependencyObject
+		{
+			if(depObj == null)
+				yield break;
+			foreach(var child in LogicalTreeHelper.GetChildren(depObj).OfType<DependencyObject>())
+			{
+				if(child is T childT && filter(childT))
+				{
+					yield return childT;
 					continue;
-				foreach(var childOfChild in FindLogicalChildren<T>(childDepObj))
+				}
+				foreach(var childOfChild in FindLogicalDescendants<T>(filter, child))
 					yield return childOfChild;
 			}
 		}
@@ -649,22 +567,6 @@ namespace Hearthstone_Deck_Tracker
 					await Task.Delay(delay);
 				}
 			}
-		}
-
-		public static Region GetRegionByServerIp(string ip)
-		{
-			if(string.IsNullOrEmpty(ip))
-				return Region.UNKNOWN;
-			if(ip.StartsWith("12.130"))
-				return Region.US;
-			if(ip.StartsWith("80.239"))
-				return Region.EU;
-			if(ip.StartsWith("117.52"))
-				return Region.ASIA;
-			if(ip.StartsWith("114.113"))
-				return Region.CHINA;
-			Log.Warn("Unknown IP: " + ip);
-			return Region.UNKNOWN;
 		}
 
 		public static SolidColorBrush BrushFromHex(string hex)
@@ -708,10 +610,79 @@ namespace Hearthstone_Deck_Tracker
 		}
 
 		public static bool IsValidUrl(string url)
-		{
-			Uri result;
-			return Uri.TryCreate(url, UriKind.Absolute, out result)
+			=> Uri.TryCreate(url, UriKind.Absolute, out Uri result)
 				&& (result.Scheme == Uri.UriSchemeHttp || result.Scheme == Uri.UriSchemeHttps);
+
+		public static readonly Dictionary<MultiClassGroup, CardClass[]> MultiClassGroups = new Dictionary<MultiClassGroup, CardClass[]>
+		{
+			{MultiClassGroup.GRIMY_GOONS, new[] {CardClass.HUNTER, CardClass.PALADIN, CardClass.WARRIOR}},
+			{MultiClassGroup.JADE_LOTUS, new[] {CardClass.DRUID, CardClass.ROGUE, CardClass.SHAMAN}},
+			{MultiClassGroup.KABAL, new[] {CardClass.MAGE, CardClass.PRIEST, CardClass.WARLOCK}}
+		};
+
+		public static IEnumerable<FileInfo> GetFileInfos(string path, bool subDir)
+		{
+			var dirInfo = new DirectoryInfo(path);
+			foreach(var fileInfo in dirInfo.GetFiles())
+				yield return fileInfo;
+			if(!subDir)
+				yield break;
+			foreach(var dir in dirInfo.GetDirectories())
+			foreach(var fileInfo in dir.GetFiles())
+				yield return fileInfo;
+		}
+
+		internal static void VerifyHearthstonePath()
+		{
+			var proc = User32.GetHearthstoneProc();
+			if(proc == null)
+			{
+				Log.Warn("Could not find Hearthstone process");
+				return;
+			}
+			try
+			{
+				var executable = new FileInfo(proc.MainModule.FileName);
+				var currentPath = Config.Instance.HearthstoneDirectory;
+				var procPath = executable.Directory?.FullName;
+				if(procPath != null && procPath != currentPath)
+				{
+					Log.Warn($"Current path (\"{currentPath}\") does not match the running Hearthstone process: \"{procPath}\". Updating path");
+					Config.Instance.HearthstoneDirectory = procPath;
+					Config.Save();
+					Core.Reset().Forget();
+				}
+			}
+			catch(Exception e)
+			{
+				Log.Error(e);
+			}
+		}
+
+		public static bool TryGetAttribute<T>(object obj, out T attribute) where T : Attribute
+		{
+			var members = obj?.GetType().GetMember(obj.ToString());
+			if(members?.Length > 0)
+			{
+				var attributes = members[0].GetCustomAttributes(typeof(T), false);
+				if(attributes.Length > 0)
+				{
+					attribute = (T)attributes[0];
+					return true;
+				}
+			}
+			attribute = default(T);
+			return false;
+		}
+
+		internal static string GetUserAgent()
+		{
+#if(SQUIRREL)
+			const string name = "HDT";
+#else
+			const string name = "HDTPortable";
+#endif
+			return name + "/" + GetCurrentVersion();
 		}
 	}
 }

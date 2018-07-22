@@ -1,6 +1,7 @@
 ﻿#region
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -44,7 +45,7 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 			CheckboxReplays.IsChecked = Config.Instance.RecordReplays;
 			ComboboxDisplayedStats.ItemsSource = Enum.GetValues(typeof(DisplayedStats));
 			ComboboxDisplayedMode.ItemsSource = Enum.GetValues(typeof(GameMode));
-			ComboboxDisplayedTimeFrame.ItemsSource = Enum.GetValues(typeof(DisplayedTimeFrame));
+			ComboboxDisplayedTimeFrame.ItemsSource = GetTimeFrames();
 			ComboboxDisplayedStats.SelectedItem = Config.Instance.DisplayedStats;
 			ComboboxDisplayedMode.SelectedItem = Config.Instance.DisplayedMode;
 			ComboboxDisplayedTimeFrame.SelectedItem = Config.Instance.DisplayedTimeFrame;
@@ -53,6 +54,9 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 			DatePickerCustomTimeFrame.SelectedDate = Config.Instance.CustomDisplayedTimeFrame;
 			_initialized = true;
 		}
+
+		private IEnumerable<DisplayedTimeFrame> GetTimeFrames() => Enum.GetValues(typeof(DisplayedTimeFrame))
+			.OfType<DisplayedTimeFrame>().Where(x => x != DisplayedTimeFrame.CustomSeason);
 
 		private void CheckboxRecordRanked_Checked(object sender, RoutedEventArgs e)
 		{
@@ -270,9 +274,7 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 				return;
 			Config.Instance.DisplayedStats = (DisplayedStats)ComboboxDisplayedStats.SelectedItem;
 			Config.Save();
-			foreach(var deck in DeckList.Instance.Decks)
-				deck.StatsUpdated();
-			Core.Overlay.Update(true);
+			Core.MainWindow.DisplayFiltersUpdated();
 		}
 
 		private void ComboboxGameMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -281,9 +283,7 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 				return;
 			Config.Instance.DisplayedMode = (GameMode)ComboboxDisplayedMode.SelectedItem;
 			Config.Save();
-			foreach(var deck in DeckList.Instance.Decks)
-				deck.StatsUpdated();
-			Core.Overlay.Update(true);
+			Core.MainWindow.DisplayFiltersUpdated();
 		}
 
 		private void ComboboxDisplayedTimeFrame_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -292,9 +292,7 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 				return;
 			Config.Instance.DisplayedTimeFrame = (DisplayedTimeFrame)ComboboxDisplayedTimeFrame.SelectedItem;
 			Config.Save();
-			foreach(var deck in DeckList.Instance.Decks)
-				deck.StatsUpdated();
-			Core.Overlay.Update(true);
+			Core.MainWindow.DisplayFiltersUpdated();
 			PanelCustomTimeFrame.Visibility = Config.Instance.DisplayedTimeFrame == DisplayedTimeFrame.Custom
 				                                  ? Visibility.Visible : Visibility.Collapsed;
 		}
@@ -305,9 +303,7 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 				return;
 			Config.Instance.CustomDisplayedTimeFrame = DatePickerCustomTimeFrame.SelectedDate;
 			Config.Save();
-			foreach(var deck in DeckList.Instance.Decks)
-				deck.StatsUpdated();
-			Core.Overlay.Update(true);
+			Core.MainWindow.DisplayFiltersUpdated();
 		}
 
 		private void CheckboxAskBeforeDiscarding_Checked(object sender, RoutedEventArgs e)

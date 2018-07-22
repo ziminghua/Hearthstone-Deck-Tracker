@@ -10,9 +10,11 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Xml.Serialization;
+using HearthDb.Enums;
 using Hearthstone_Deck_Tracker.Annotations;
 using Hearthstone_Deck_Tracker.Controls.Stats;
 using Hearthstone_Deck_Tracker.Enums;
+using Hearthstone_Deck_Tracker.HsReplay.Utility;
 using Hearthstone_Deck_Tracker.Stats;
 using Hearthstone_Deck_Tracker.Utility;
 using Hearthstone_Deck_Tracker.Utility.Extensions;
@@ -24,7 +26,6 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 	public class Deck : ICloneable, INotifyPropertyChanged
 	{
 		private const string LocNoStats = "Deck_StatsString_NoStats";
-		private const string BaseHearthStatsUrl = @"http://hss.io/d/";
 
 		private readonly string[] _relevantMechanics =
 		{
@@ -35,20 +36,25 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			"Divine Shield",
 			"Freeze",
 			"Inspire",
+			"Lifesteal",
+			"Poisonous",
 			"Secret",
 			"Spellpower",
 			"Taunt",
 			"Windfury",
-			"Stealth"
+			"Stealth",
+			"Recruit",
+			"Discover"
 		};
 
 		private bool _archived;
 
 		private ArenaReward _arenaReward = new ArenaReward();
 		private List<GameStats> _cachedGames;
+		private SerializableVersion _cachedVersion;
 		private Guid _deckId;
-		private string _hearthStatsIdClone;
 		private bool? _isArenaDeck;
+		private bool? _isDungeonDeck;
 		private bool _isSelectedInGui;
 		private DateTime _lastCacheUpdate = DateTime.MinValue;
 		private string _name;
@@ -61,9 +67,6 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		public ObservableCollection<Card> Cards;
 
 		public string Class;
-		public string HearthStatsArenaId;
-		public string HearthStatsDeckVersionId;
-		public string HearthStatsId;
 		public DateTime LastEdited;
 
 		[XmlArray(ElementName = "MissingCards")]
@@ -77,6 +80,8 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		[XmlArrayItem(ElementName = "Deck")]
 		public List<Deck> Versions;
 
+		public event Action OnStatsUpdated;
+
 		public Deck()
 		{
 			Cards = new ObservableCollection<Card>();
@@ -86,8 +91,6 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			Url = string.Empty;
 			Name = string.Empty;
 			Archived = false;
-			SyncWithHearthStats = null;
-			HearthStatsId = string.Empty;
 			Version = SerializableVersion.Default;
 			Versions = new List<Deck>();
 			DeckId = Guid.NewGuid();
@@ -95,8 +98,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public Deck(string name, string className, IEnumerable<Card> cards, IEnumerable<string> tags, string note, string url,
 		            DateTime lastEdited, bool archived, List<Card> missingCards, SerializableVersion version, IEnumerable<Deck> versions,
-		            bool? syncWithHearthStats, string hearthStatsId, Guid deckId, string hearthStatsDeckVersionId, long hsId = 0,
-		            string hearthStatsIdClone = null, SerializableVersion selectedVersion = null, bool? isArenaDeck = null,
+		            Guid deckId, long hsId = 0, SerializableVersion selectedVersion = null, bool? isArenaDeck = null,
 		            ArenaReward reward = null)
 
 		{
@@ -112,16 +114,11 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			LastEdited = lastEdited;
 			Archived = archived;
 			Version = version;
-			SyncWithHearthStats = syncWithHearthStats;
-			HearthStatsId = hearthStatsId;
 			SelectedVersion = selectedVersion ?? version;
 			Versions = new List<Deck>();
 			DeckId = deckId;
-			if(hearthStatsIdClone != null)
-				HearthStatsIdForUploading = hearthStatsIdClone;
 			if(isArenaDeck.HasValue)
 				IsArenaDeck = isArenaDeck.Value;
-			HearthStatsDeckVersionId = hearthStatsDeckVersionId;
 			if(versions != null)
 			{
 				foreach(var d in versions)
@@ -164,11 +161,9 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				_selectedVersion = value;
 				OnPropertyChanged();
 				OnPropertyChanged(nameof(NameAndVersion));
-				OnPropertyChanged(nameof(StandardViableVisibility));
+				OnPropertyChanged(nameof(WildIndicatorVisibility));
 			}
 		}
-
-		public bool HearthStatsIdsAlreadyReset { get; set; }
 
 		[XmlIgnore]
 		public bool IsSelectedInGui
@@ -187,6 +182,12 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			set { _isArenaDeck = value; }
 		}
 
+		public bool IsDungeonDeck
+		{
+			get { return _isDungeonDeck ?? (_isDungeonDeck = CheckIfDungeonDeck()) ?? false; }
+			set { _isDungeonDeck = value; }
+		}
+
 		public bool IsBrawlDeck => Tags.Any(x => x.ToUpper().Contains("BRAWL"));
 
 		public ArenaReward ArenaReward
@@ -202,6 +203,10 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		public bool? IsArenaRunCompleted => IsArenaDeck
 												? (DeckStats.Games.Count(g => g.Result == GameResult.Win) == 12
 												   || DeckStats.Games.Count(g => g.Result == GameResult.Loss) == 3) as bool? : null;
+
+		public bool? IsDungeonRunCompleted => IsDungeonDeck
+												? (DeckStats.Games.Count(g => g.Result == GameResult.Win) == 8
+												   || DeckStats.Games.Count(g => g.Result == GameResult.Loss) == 1) as bool? : null;
 
 		public Guid DeckId
 		{
@@ -219,18 +224,6 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				OnPropertyChanged(nameof(NameAndVersion));
 			}
 		}
-
-		public bool? SyncWithHearthStats { get; set; }
-
-		[XmlIgnore]
-		public bool HasHearthStatsId => !string.IsNullOrEmpty(HearthStatsId) || !string.IsNullOrEmpty(_hearthStatsIdClone);
-
-		[XmlIgnore]
-		public string HearthStatsUrl => HasHearthStatsId
-											? BaseHearthStatsUrl + HearthStatsId : (HasHearthStatsArenaId ? BaseHearthStatsUrl + HearthStatsArenaId : "");
-
-		[XmlIgnore]
-		public bool HasHearthStatsDeckVersionId => !string.IsNullOrEmpty(HearthStatsDeckVersionId);
 
 		[XmlIgnore]
 		public List<SerializableVersion> VersionsIncludingSelf => Versions.Select(x => x.Version).Concat(new[] {Version}).ToList();
@@ -272,7 +265,10 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 					return "-";
 				var wins = relevantGames.Count(g => g.Result == GameResult.Win);
 				var losses = relevantGames.Count(g => g.Result == GameResult.Loss);
-				return Math.Round(100.0 * wins / (wins + losses), 0) + "%";
+				var total = wins + losses;
+				if(total == 0)
+					return "-";
+				return Math.Round(100.0 * wins / total, 0) + "%";
 			}
 		}
 
@@ -286,7 +282,10 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 					return 0.0;
 				var wins = relevantGames.Count(g => g.Result == GameResult.Win);
 				var losses = relevantGames.Count(g => g.Result == GameResult.Loss);
-				return 100.0 * wins / (wins + losses);
+				var total = wins + losses;
+				if(total == 0)
+					return 0.0;
+				return 100.0 * wins / total;
 			}
 		}
 
@@ -335,8 +334,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		{
 			get
 			{
-				HeroClassAll heroClass;
-				if(Enum.TryParse(Class, out heroClass))
+				if(Enum.TryParse(Class, out HeroClassAll heroClass))
 					return ImageCache.GetClassIcon(heroClass);
 				return new BitmapImage();
 			}
@@ -362,15 +360,8 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		[XmlIgnore]
 		public bool HasVersions => Versions != null && Versions.Count > 0;
 
-		public bool HasHearthStatsArenaId => !string.IsNullOrEmpty(HearthStatsArenaId);
-
-		//I don't know why I need this but I apparently can't serialize anything if versions of a deck have the same hearthstatsid
-
-		public string HearthStatsIdForUploading
-		{
-			get { return !string.IsNullOrEmpty(HearthStatsId) ? HearthStatsId : _hearthStatsIdClone; }
-			set { _hearthStatsIdClone = value; }
-		}
+		private string _shortId;
+		public string ShortId => _shortId ?? (_shortId = ShortIdHelper.GetShortId(this));
 
 		public Visibility VisibilityStats => GetRelevantGames().Any() ? Visibility.Visible : Visibility.Collapsed;
 
@@ -378,22 +369,23 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public Visibility NoteVisibility => string.IsNullOrEmpty(Note) ? Visibility.Collapsed : Visibility.Visible;
 
-		public Visibility StandardViableVisibility => StandardViable ? Visibility.Visible : Visibility.Collapsed;
+		public Visibility WildIndicatorVisibility => IsArenaDeck || !IsWildDeck ? Visibility.Collapsed : Visibility.Visible;
 
-		public bool StandardViable => !IsArenaDeck && !GetSelectedDeckVersion().Cards.Any(x => Helper.WildOnlySets.Contains(x.Set));
+		public bool StandardViable => !IsArenaDeck && !IsWildDeck;
+
+		public bool IsWildDeck => GetSelectedDeckVersion().Cards.Any(x => Helper.WildOnlySets.Contains(x.Set));
 
 		public Visibility ArchivedVisibility => Archived ? Visibility.Visible : Visibility.Collapsed;
 
 		private TimeSpan ValidCacheDuration => new TimeSpan(0, 0, 1);
 
-		private bool CacheIsValid => _cachedGames != null && DateTime.Now - _lastCacheUpdate < ValidCacheDuration;
+		private bool CacheIsValid => _cachedGames != null && _cachedVersion == SelectedVersion && DateTime.Now - _lastCacheUpdate < ValidCacheDuration;
 
 		[XmlIgnore]
 		public List<Mechanic> Mechanics => _relevantMechanics.Select(x => new Mechanic(x, this)).Where(m => m.Count > 0).ToList();
 
-		public object Clone() => new Deck(Name, Class, Cards, Tags, Note, Url, LastEdited, Archived, MissingCards, Version, Versions, SyncWithHearthStats,
-										  HearthStatsId, DeckId, HearthStatsDeckVersionId, HsId, HearthStatsIdForUploading, SelectedVersion, _isArenaDeck,
-										  ArenaReward);
+		public object Clone() => new Deck(Name, Class, Cards, Tags, Note, Url, LastEdited, Archived, MissingCards, Version, Versions,
+										  DeckId, HsId, SelectedVersion, _isArenaDeck, ArenaReward);
 
 		public event PropertyChangedEventHandler PropertyChanged;
 
@@ -405,23 +397,27 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				               ? DeckStats.Games
 				               : (IsArenaDeck
 					                  ? DeckStats.Games.Where(g => g.GameMode == GameMode.Arena).ToList()
-					                  : DeckStats.Games.Where(g => g.GameMode == Config.Instance.DisplayedMode).ToList());
+					                  : DeckStats.Games.Where(g => g.GameMode == Config.Instance.DisplayedMode));
 			switch(Config.Instance.DisplayedTimeFrame)
 			{
 				case DisplayedTimeFrame.AllTime:
 					break;
+				case DisplayedTimeFrame.LastSeason:
+					filtered = filtered.Where(g => g.StartTime >= new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1)
+												&& g.StartTime < new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1));
+					break;
 				case DisplayedTimeFrame.CurrentSeason:
-					filtered = filtered.Where(g => g.StartTime > new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)).ToList();
+					filtered = filtered.Where(g => g.StartTime > new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1));
 					break;
 				case DisplayedTimeFrame.ThisWeek:
-					filtered = filtered.Where(g => g.StartTime > DateTime.Today.AddDays(-((int)g.StartTime.DayOfWeek + 1))).ToList();
+					filtered = filtered.Where(g => g.StartTime > DateTime.Today.AddDays(-((int)g.StartTime.DayOfWeek + 1)));
 					break;
 				case DisplayedTimeFrame.Today:
-					filtered = filtered.Where(g => g.StartTime > DateTime.Today).ToList();
+					filtered = filtered.Where(g => g.StartTime > DateTime.Today);
 					break;
 				case DisplayedTimeFrame.Custom:
 					if(Config.Instance.CustomDisplayedTimeFrame.HasValue)
-						filtered = filtered.Where(g => g.StartTime > Config.Instance.CustomDisplayedTimeFrame.Value).ToList();
+						filtered = filtered.Where(g => g.StartTime > Config.Instance.CustomDisplayedTimeFrame.Value);
 					break;
 			}
 			switch(Config.Instance.DisplayedStats)
@@ -429,39 +425,29 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				case DisplayedStats.All:
 					break;
 				case DisplayedStats.Latest:
-					filtered = filtered.Where(g => g.BelongsToDeckVerion(this)).ToList();
+					filtered = filtered.Where(g => g.BelongsToDeckVerion(this));
 					break;
 				case DisplayedStats.Selected:
-					filtered = filtered.Where(g => g.BelongsToDeckVerion(GetSelectedDeckVersion())).ToList();
+					filtered = filtered.Where(g => g.BelongsToDeckVerion(GetSelectedDeckVersion()));
 					break;
 				case DisplayedStats.LatestMajor:
 					filtered =
-						filtered.Where(g => VersionsIncludingSelf.Where(v => v.Major == Version.Major).Select(GetVersion).Any(g.BelongsToDeckVerion))
-						        .ToList();
+						filtered.Where(g => VersionsIncludingSelf.Where(v => v.Major == Version.Major).Select(GetVersion).Any(g.BelongsToDeckVerion));
 					break;
 				case DisplayedStats.SelectedMajor:
-					filtered =
-						filtered.Where(
-						               g =>
-						               VersionsIncludingSelf.Where(v => v.Major == SelectedVersion.Major).Select(GetVersion).Any(g.BelongsToDeckVerion))
-						        .ToList();
+					filtered = filtered.Where(g => VersionsIncludingSelf.Where(v => v.Major == SelectedVersion.Major)
+						.Select(GetVersion).Any(g.BelongsToDeckVerion));
 					break;
 			}
-			_cachedGames = filtered;
+			_cachedGames = filtered.ToList();
 			_lastCacheUpdate = DateTime.Now;
-			return filtered;
-		}
-
-		public void ResetHearthstatsIds()
-		{
-			HearthStatsArenaId = null;
-			HearthStatsDeckVersionId = null;
-			HearthStatsId = null;
-			_hearthStatsIdClone = null;
-			HearthStatsIdsAlreadyReset = true;
+			_cachedVersion = SelectedVersion;
+			return _cachedGames;
 		}
 
 		public bool? CheckIfArenaDeck() => !DeckStats.Games.Any() ? (bool?)null : DeckStats.Games.All(g => g.GameMode == GameMode.Arena);
+
+		public bool? CheckIfDungeonDeck() => !DeckStats.Games.Any() ? (bool?)null : DeckStats.Games.All(g => g.IsDungeonMatch);
 
 		public Deck GetVersion(int major, int minor) => GetVersion(new SerializableVersion(major, minor));
 
@@ -469,8 +455,8 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public bool HasVersion(SerializableVersion version) => Version == version || Versions.Any(v => v.Version == version);
 
-		public object CloneWithNewId(bool isVersion) => new Deck(Name, Class, Cards, Tags, Note, Url, LastEdited, Archived, MissingCards, Version, Versions, SyncWithHearthStats, "",
-																 Guid.NewGuid(), HearthStatsDeckVersionId, HsId, isVersion ? HearthStatsIdForUploading : "", SelectedVersion, _isArenaDeck);
+		public object CloneWithNewId(bool isVersion) => new Deck(Name, Class, Cards, Tags, Note, Url, LastEdited, Archived, MissingCards, Version, Versions,
+																 Guid.NewGuid(), HsId, SelectedVersion, _isArenaDeck);
 
 		public void ResetVersions()
 		{
@@ -508,6 +494,8 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public bool ContainsSet(string set) => Cards.Any(card => card.Set == set);
 
+		public bool ContainsSet(CardSet set) => Cards.Any(card => card.CardSet == set);
+
 		public override string ToString() => $"{Name} ({Class})";
 
 		public override bool Equals(object obj)
@@ -517,12 +505,10 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				return false;
 			if(!Version.Equals(deck.Version))
 				return false;
-			if(deck.HasHearthStatsId && HasHearthStatsId)
-				return HearthStatsId.Equals(deck.HearthStatsId);
 			return DeckId.Equals(deck.DeckId);
 		}
 
-		public override int GetHashCode() => HasHearthStatsId ? HasHearthStatsId.GetHashCode() : DeckId.GetHashCode();
+		public override int GetHashCode() => DeckId.GetHashCode();
 
 		public static List<Card> operator -(Deck first, Deck second)
 		{
@@ -576,8 +562,10 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			OnPropertyChanged(nameof(WinPercentString));
 			OnPropertyChanged(nameof(VisibilityStats));
 			OnPropertyChanged(nameof(VisibilityNoStats));
+			OnStatsUpdated?.Invoke();
+			Core.MainWindow.DeckPickerList.RefreshDisplayedDecks();
 		}
 
-		public void UpdateStandardIndicatorVisibility() => OnPropertyChanged(nameof(StandardViableVisibility));
+		public void UpdateWildIndicatorVisibility() => OnPropertyChanged(nameof(WildIndicatorVisibility));
 	}
 }

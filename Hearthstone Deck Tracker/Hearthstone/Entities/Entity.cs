@@ -3,8 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Windows;
-using System.Windows.Media;
 using HearthDb.Enums;
 using Hearthstone_Deck_Tracker.Enums;
 using Newtonsoft.Json;
@@ -47,6 +45,10 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Entities
 		public bool IsHero => GetTag(GameTag.CARDTYPE) == (int)CardType.HERO;
 
 		[JsonIgnore]
+		// TODO: Replace CardSet check once the ICC update goes live
+		public bool IsPlayableHero => IsHero && Card.CardSet != CardSet.CORE && Card.CardSet != CardSet.HERO_SKINS && Card.Collectible;
+
+		[JsonIgnore]
 		public bool IsActiveDeathrattle => HasTag(GameTag.DEATHRATTLE) && GetTag(GameTag.DEATHRATTLE) == 1;
 
 		/// <Summary>
@@ -56,10 +58,13 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Entities
 		public bool IsOpponent => !IsPlayer && HasTag(GameTag.PLAYER_ID);
 
 		[JsonIgnore]
-		public bool IsMinion => HasTag(GameTag.CARDTYPE) && GetTag(GameTag.CARDTYPE) == (int)CardType.MINION;
+		public bool IsMinion => GetTag(GameTag.CARDTYPE) == (int)CardType.MINION;
 
 		[JsonIgnore]
-		public bool IsWeapon => HasTag(GameTag.CARDTYPE) && GetTag(GameTag.CARDTYPE) == (int)CardType.WEAPON;
+		public bool IsPlayableCard => IsMinion || IsSpell || IsWeapon || IsPlayableHero;
+
+		[JsonIgnore]
+		public bool IsWeapon => GetTag(GameTag.CARDTYPE) == (int)CardType.WEAPON;
 
 		[JsonIgnore]
 		public bool IsInHand => IsInZone(Zone.HAND);
@@ -80,113 +85,24 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Entities
 		public bool IsInSecret => IsInZone(Zone.SECRET);
 
 		[JsonIgnore]
-		public Card Card
-			=>
-				_cachedCard
-				?? (_cachedCard =
-					(Database.GetCardFromId(CardId)
-					 ?? new Card(string.Empty, null, Rarity.FREE, "unknown", "unknown", 0, "unknown", 0, 1, "", "", 0, 0, "unknown", null, 0, "", "")))
-			;
+		public bool IsQuest => HasTag(GameTag.QUEST);
+
+		[JsonIgnore]
+		public Card Card => _cachedCard ??
+			(_cachedCard = Database.GetCardFromId(CardId) ??
+				new Card(string.Empty, null, Rarity.FREE, "unknown", "unknown", 0, "unknown", 0, 1, "", "", 0, 0, "unknown", null, 0, "", ""));
 
 		[JsonIgnore]
 		public int Attack => GetTag(GameTag.ATK);
 
 		[JsonIgnore]
-		public SolidColorBrush AttackTextColor
-		{
-			get
-			{
-				var color = Colors.White;
-				if(!string.IsNullOrEmpty(CardId) && Attack > Card.Attack)
-					color = Colors.LawnGreen;
-				return new SolidColorBrush(color);
-			}
-		}
-
-		[JsonIgnore]
 		public int Health => GetTag(GameTag.HEALTH) - GetTag(GameTag.DAMAGE);
-
-		[JsonIgnore]
-		public SolidColorBrush HealthTextColor
-		{
-			get
-			{
-				var color = Colors.White;
-				if(GetTag(GameTag.DAMAGE) > 0)
-					color = Colors.Red;
-				else if(!string.IsNullOrEmpty(CardId) && Health > Card.Health)
-					color = Colors.LawnGreen;
-
-				return new SolidColorBrush(color);
-			}
-		}
 
 		[JsonIgnore]
 		public int Cost => HasTag(GameTag.COST) ? GetTag(GameTag.COST) : Card.Cost;
 
 		[JsonIgnore]
-		public SolidColorBrush CostTextColor
-		{
-			get
-			{
-				var color = Colors.White;
-				if(!string.IsNullOrEmpty(CardId))
-				{
-					if(Cost < Card.Cost)
-						color = Colors.LawnGreen;
-					else if(Cost > Card.Cost)
-						color = Colors.Red;
-				}
-				return new SolidColorBrush(color);
-			}
-		}
-
-		[JsonIgnore]
-		public DrawingBrush Background => Card.Background;
-
-		[JsonIgnore]
-		public FontFamily Font
-		{
-			get
-			{
-				var lang = Config.Instance.SelectedLanguage;
-				var font = new FontFamily();
-				// if the language uses a Latin script use Belwe font
-				if(Helper.LatinLanguages.Contains(lang) || Config.Instance.NonLatinUseDefaultFont == false)
-					font = new FontFamily(new Uri("pack://application:,,,/"), "./resources/#Belwe Bd BT");
-				return font;
-			}
-		}
-
-		[JsonIgnore]
 		public string LocalizedName => Card.LocalizedName;
-
-		[JsonIgnore]
-		public string Effects
-		{
-			get
-			{
-				var effects = string.Empty;
-				if(HasTag(GameTag.DIVINE_SHIELD))
-					effects += "Divine Shield";
-				if(HasTag(GameTag.TAUNT))
-					effects += (string.IsNullOrEmpty(effects) ? string.Empty : Environment.NewLine) + "Taunt";
-				if(HasTag(GameTag.STEALTH))
-					effects += (string.IsNullOrEmpty(effects) ? string.Empty : Environment.NewLine) + "Stealth";
-				if(HasTag(GameTag.SILENCED))
-					effects += (string.IsNullOrEmpty(effects) ? string.Empty : Environment.NewLine) + "Silenced";
-				if(HasTag(GameTag.FROZEN))
-					effects += (string.IsNullOrEmpty(effects) ? string.Empty : Environment.NewLine) + "Frozen";
-				if(HasTag(GameTag.ENRAGED))
-					effects += (string.IsNullOrEmpty(effects) ? string.Empty : Environment.NewLine) + "Enraged";
-				if(HasTag(GameTag.WINDFURY))
-					effects += (string.IsNullOrEmpty(effects) ? string.Empty : Environment.NewLine) + "Windfury";
-				return effects;
-			}
-		}
-
-		[JsonIgnore]
-		public Visibility EffectsVisibility => string.IsNullOrEmpty(Effects) ? Visibility.Collapsed : Visibility.Visible;
 
 		public bool IsSecret => HasTag(GameTag.SECRET);
 
@@ -202,14 +118,11 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Entities
 
 		public bool IsControlledBy(int controllerId) => HasTag(GameTag.CONTROLLER) && GetTag(GameTag.CONTROLLER) == controllerId;
 
+		public bool IsClass(CardClass cardClass) => GetTag(GameTag.CLASS) == (int)cardClass;
+
 		public bool HasTag(GameTag tag) => GetTag(tag) > 0;
 
-		public int GetTag(GameTag tag)
-		{
-			int value;
-			Tags.TryGetValue(tag, out value);
-			return value;
-		}
+		public int GetTag(GameTag tag) => Tags.TryGetValue(tag, out var value) ? value : 0;
 
 		public void SetTag(GameTag tag, int value)
 		{
@@ -259,6 +172,13 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Entities
 			}
 		}
 
+		public void SetOriginalCardId(int dbfId)
+		{
+			if(dbfId <= 0)
+				return;
+			OriginalCardId = Database.GetCardFromDbfId(dbfId).Id;
+		}
+
 		public bool Discarded { get; set; }
 		public bool Returned { get; set; }
 		public bool Mulliganed { get; set; }
@@ -269,8 +189,11 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Entities
 		public bool Hidden { get; set; }
 		public int CostReduction { get; set; }
 		public Zone? OriginalZone { get; set; }
+		public string OriginalCardId { get; private set; }
+		public bool WasTransformed => !string.IsNullOrEmpty(OriginalCardId);
 		public bool CreatedInDeck => OriginalZone == Zone.DECK;
 		public bool CreatedInHand => OriginalZone == Zone.HAND;
+		public bool? OriginalEntityWasCreated { get; internal set; }
 
 		public override string ToString()
 		{
@@ -290,6 +213,14 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Entities
 				sb.Append(", created=true");
 			if(OriginalZone.HasValue)
 				sb.Append(", originalZone=" + OriginalZone);
+			if(HasOutstandingTagChanges)
+				sb.Append(", hasOutstandingTagChanges=true");
+			if(Hidden)
+				sb.Append(", hidden=true");
+			if(OriginalController > 0)
+				sb.Append(", OriginalController=" + OriginalController);
+			if(!string.IsNullOrEmpty(OriginalCardId))
+				sb.Append(", OriginalCardId=" + OriginalCardId);
 			return sb.ToString();
 		}
 	}

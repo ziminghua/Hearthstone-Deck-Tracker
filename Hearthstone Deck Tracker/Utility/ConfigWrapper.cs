@@ -11,6 +11,10 @@ namespace Hearthstone_Deck_Tracker.Utility
 {
 	public class ConfigWrapper
 	{
+		public static event Action ReplayAutoUploadChanged;
+		public static event Action CollectionSyncingChanged;
+		public static event Action IgnoreNewsIdChanged;
+
 		public static bool CardDbIncludeWildOnlyCards
 		{
 			get { return Config.Instance.CardDbIncludeWildOnlyCards; }
@@ -181,13 +185,18 @@ namespace Hearthstone_Deck_Tracker.Utility
 			}
 		}
 
-		public static bool ForceLocalReplayViewer
+		public static bool CollectionSyncingEnabled
 		{
-			get { return Config.Instance.ForceLocalReplayViewer; }
+			get { return Config.Instance.SyncCollection; }
 			set
 			{
-				Config.Instance.ForceLocalReplayViewer = value;
-				Config.Save();
+				if(Config.Instance.SyncCollection != value)
+				{
+					Config.Instance.SyncCollection = value;
+					Config.Save();
+					Influx.OnCollectionSyncingEnabled(value);
+				}
+				CollectionSyncingChanged?.Invoke();
 			}
 		}
 
@@ -199,6 +208,7 @@ namespace Hearthstone_Deck_Tracker.Utility
 				Config.Instance.HsReplayAutoUpload = value;
 				Config.Save();
 				Influx.OnHsReplayAutoUploadChanged(value);
+				ReplayAutoUploadChanged?.Invoke();
 			}
 		}
 
@@ -272,7 +282,7 @@ namespace Hearthstone_Deck_Tracker.Utility
 			}
 		}
 
-		public static Visibility ShowLastPlayedDateOnDeckVisibility => Config.Instance.ShowLastPlayedDateOnDeck ? Visibility.Visible : Visibility.Collapsed;
+		public static Visibility ShowDateOnDeckVisibility => Config.Instance.ShowDateOnDeck ? Visibility.Visible : Visibility.Collapsed;
 
 		public static Visibility UseButtonVisiblity => Config.Instance.AutoUseDeck ? Visibility.Collapsed : Visibility.Visible;
 
@@ -366,12 +376,35 @@ namespace Hearthstone_Deck_Tracker.Utility
 			}
 		}
 
+		public bool CheckForDevUpdates
+		{
+			get { return Config.Instance.CheckForDevUpdates; }
+			set
+			{
+				Config.Instance.CheckForDevUpdates = value;
+				Config.Instance.AllowDevUpdates = null;
+				Config.Save();
+			}
+		}
+
+		public static int IgnoreNewsId
+		{
+			get => Config.Instance.IgnoreNewsId;
+			set
+			{
+				Config.Instance.IgnoreNewsId = value;
+				Config.Save();
+				IgnoreNewsIdChanged?.Invoke();
+			}
+		}
+
+		public bool WindowCardToolTips => Config.Instance.WindowCardToolTips;
+
 		private static int? ValidateSeason(string value, bool allowEmpty)
 		{
 			if(allowEmpty && string.IsNullOrEmpty(value))
 				return null;
-			int season;
-			if(!int.TryParse(value, out season))
+			if(!int.TryParse(value, out var season))
 				throw new ApplicationException("Invalid season");
 			if(season < 1)
 				throw new ApplicationException("Invalid season. Minimum value: 1");
@@ -389,8 +422,7 @@ namespace Hearthstone_Deck_Tracker.Utility
 			if(!match.Success)
 				throw new ApplicationException("Invalid rank");
 			var legend = match.Groups["legend"].Success;
-			int rank;
-			if(int.TryParse(match.Groups["rank"].Value, out rank))
+			if(int.TryParse(match.Groups["rank"].Value, out var rank))
 			{
 				if(!legend && rank > 25)
 					throw new ApplicationException("Rank can not be higher than 25");

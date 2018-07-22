@@ -7,7 +7,7 @@ using Hearthstone_Deck_Tracker.LogReader.Interfaces;
 using Hearthstone_Deck_Tracker.Utility.Logging;
 using static System.TimeZoneInfo;
 using static Hearthstone_Deck_Tracker.Enums.Region;
-using static Hearthstone_Deck_Tracker.LogReader.HsLogReaderConstants;
+using static Hearthstone_Deck_Tracker.LogReader.LogConstants;
 
 #endregion
 
@@ -17,18 +17,15 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 	{
 		public void Handle(string logLine, IHsGameState gameState, IGame game)
 		{
-			if(GoldProgressRegex.IsMatch(logLine) && (DateTime.Now - gameState.LastGameStart) > TimeSpan.FromSeconds(10)
-			        && game.CurrentGameMode != GameMode.Spectator)
-			{
-				int wins;
-				var rawWins = GoldProgressRegex.Match(logLine).Groups["wins"].Value;
-				if(int.TryParse(rawWins, out wins))
-				{
-					var timeZone = GetTimeZoneInfo(game.CurrentRegion);
-					if(timeZone != null)
-						UpdateGoldProgress(wins, game, timeZone);
-				}
-			}
+			if(!GoldProgressRegex.IsMatch(logLine) || (DateTime.Now - gameState.LastGameStart) <= TimeSpan.FromSeconds(10)
+				|| game.CurrentGameMode == GameMode.Spectator)
+				return;
+			var rawWins = GoldProgressRegex.Match(logLine).Groups["wins"].Value;
+			if(!int.TryParse(rawWins, out int wins))
+				return;
+			var timeZone = GetTimeZoneInfo(game.CurrentRegion);
+			if(timeZone != null)
+				UpdateGoldProgress(wins, game, timeZone);
 		}
 
 		private TimeZoneInfo GetTimeZoneInfo(Region region)

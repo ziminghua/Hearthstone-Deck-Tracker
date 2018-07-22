@@ -2,12 +2,14 @@
 
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Input;
 using Hearthstone_Deck_Tracker.Annotations;
 using Hearthstone_Deck_Tracker.Controls.DeckPicker.DeckPickerItemLayouts;
+using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.Hearthstone;
+using Hearthstone_Deck_Tracker.HsReplay;
 using Hearthstone_Deck_Tracker.Utility;
 
 #endregion
@@ -50,9 +52,55 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 
 		public string TextUseButton => Deck.Equals(DeckList.Instance.ActiveDeck) ? LocUtil.Get(LocActive, true) : LocUtil.Get(LocUse, true);
 
+		public Visibility HsReplayDataIndicatorVisibility => HsReplayDataManager.Decks.AvailableDecks.Contains(Deck.GetSelectedDeckVersion().ShortId) ? Visibility.Visible : Visibility.Collapsed;
+
 		public event PropertyChangedEventHandler PropertyChanged;
 
 		public void SetLayout() => Content = Activator.CreateInstance(_deckPickerItem);
+
+		public string DataIndicatorTooltip => LocUtil.Get("DeckCharts_Tooltip_Uploaded");
+
+		public string WildIndicatorTooltip => LocUtil.Get("DeckPicker_Deck_Wild_Tooltip");
+
+		public string ArchivedTooltip => LocUtil.Get("DeckPicker_Deck_Archived_Tooltip");
+
+		public string LegacyNoStatsNo => LocUtil.Get("DeckPicker_Deck_Legacy_NoStats_No");
+
+		public string LegacyNoStatsStats => LocUtil.Get("DeckPicker_Deck_Legacy_NoStats_Stats");
+
+		public string StatsString => Deck.StatsString;
+
+		public string DateShownOnDeckTooltip
+		{
+			get
+			{
+				switch (Config.Instance.SelectedDateOnDecks)
+				{
+					case DeckDateType.LastPlayed:
+						return LocUtil.Get("DeckPicker_Deck_LastPlayed_Tooltip");
+					case DeckDateType.LastEdited:
+						return LocUtil.Get("DeckPicker_Deck_LastEdited_Tooltip");
+					default:
+						return null;
+				}
+			}
+		}
+
+		public DateTime DateShownOnDeck
+		{
+			get
+			{
+				switch(Config.Instance.SelectedDateOnDecks)
+				{
+					case DeckDateType.LastPlayed:
+						return Deck.LastPlayed;
+					case DeckDateType.LastEdited:
+						return Deck.LastEdited;
+					default:
+						return DateTime.MinValue;
+				}
+			}
+		}
 
 		public void RefreshProperties()
 		{
@@ -60,7 +108,9 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 			OnPropertyChanged(nameof(FontWeightActiveDeck));
 			OnPropertyChanged(nameof(TextUseButton));
 			OnPropertyChanged(nameof(LastPlayed));
-			Deck.UpdateStandardIndicatorVisibility();
+			OnPropertyChanged(nameof(HsReplayDataIndicatorVisibility));
+			OnPropertyChanged(nameof(StatsString));
+			Deck.UpdateWildIndicatorVisibility();
 		}
 
 		[NotifyPropertyChangedInvocator]
@@ -85,23 +135,10 @@ namespace Hearthstone_Deck_Tracker.Controls.DeckPicker
 
 		public string TagList => Deck.TagList;
 
+		public int NumGames => Deck.GetRelevantGames().Count;
+
+		public bool Favorite => Deck.Tags.Any(x => x.ToUpperInvariant() == "FAVORITE");
+
 		#endregion
-	}
-
-	public class Command : ICommand
-	{
-		private readonly Action _action;
-
-		public Command(Action action)
-		{
-			_action = action;
-		}
-
-		public bool CanExecute(object parameter) => _action != null;
-
-		public void Execute(object parameter) => _action.Invoke();
-#pragma warning disable 0067
-		public event EventHandler CanExecuteChanged;
-#pragma warning restore 0067
 	}
 }

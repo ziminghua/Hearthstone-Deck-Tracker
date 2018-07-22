@@ -1,4 +1,4 @@
-﻿#region
+#region
 
 using System;
 using System.Collections.Generic;
@@ -32,19 +32,19 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 		public void Load()
 		{
 			CheckBoxAutoUse.IsChecked = Config.Instance.AutoUseDeck;
+			CheckBoxAutoDeckDetection.IsChecked = Config.Instance.AutoDeckDetection;
 			CheckboxHideManaCurveMyDecks.IsChecked = Config.Instance.ManaCurveMyDecks;
 			CheckboxTrackerCardToolTips.IsChecked = Config.Instance.TrackerCardToolTips;
-			CheckboxFullTextSearch.IsChecked = Config.Instance.UseFullTextSearch;
-			CheckboxBringHsToForegorund.IsChecked = Config.Instance.BringHsToForeground;
-			CheckboxFlashHs.IsChecked = Config.Instance.FlashHsOnTurnStart;
-			CheckboxTimerAlert.IsChecked = Config.Instance.TimerAlert;
 			CheckBoxClassCardsFirst.IsChecked = Config.Instance.CardSortingClassFirst;
-			TextboxTimerAlert.Text = Config.Instance.TimerAlertSeconds.ToString();
 			ComboboxLanguages.ItemsSource = Helper.LanguageDict.Keys.Where(x => x != "English (Great Britain)");
 			CheckboxDeckPickerCaps.IsChecked = Config.Instance.DeckPickerCaps;
-			ComboBoxLastPlayedDateFormat.ItemsSource = Enum.GetValues(typeof(LastPlayedDateFormat));
-			CheckBoxShowLastPlayedDate.IsChecked = Config.Instance.ShowLastPlayedDateOnDeck;
-			ComboBoxLastPlayedDateFormat.SelectedItem = Config.Instance.LastPlayedDateFormat;
+			ComboBoxDeckDateType.ItemsSource = Enum.GetValues(typeof(DeckDateType));
+			ComboBoxDeckDateType.SelectedItem = Config.Instance.SelectedDateOnDecks;
+			ComboBoxDateFormat.ItemsSource = Enum.GetValues(typeof(DateFormat));
+			ComboBoxDateFormat.SelectedItem = Config.Instance.SelectedDateFormat;
+			DateFormatPanel.Visibility = Config.Instance.ShowDateOnDeck ? Visibility.Visible : Visibility.Collapsed;
+			CheckboxShowMyGamesPanel.IsChecked = Config.Instance.ShowMyGamesPanel;
+			CheckBoxAutoArchiveArenaDecks.IsChecked = Config.Instance.AutoArchiveArenaDecks;
 
 			if(Config.Instance.NonLatinUseDefaultFont == null)
 			{
@@ -113,86 +113,6 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 			Config.Save();
 		}
 
-		private void TextboxTimerAlert_PreviewTextInput(object sender, TextCompositionEventArgs e)
-		{
-			if(!char.IsDigit(e.Text, e.Text.Length - 1))
-				e.Handled = true;
-		}
-
-		private void TextboxTimerAlert_TextChanged(object sender, TextChangedEventArgs e)
-		{
-			if(!_initialized || CheckboxTimerAlert.IsChecked != true)
-				return;
-			int mTimerAlertValue;
-			if(int.TryParse(TextboxTimerAlert.Text, out mTimerAlertValue))
-			{
-				if(mTimerAlertValue < 0)
-				{
-					TextboxTimerAlert.Text = "0";
-					mTimerAlertValue = 0;
-				}
-
-				if(mTimerAlertValue > 90)
-				{
-					TextboxTimerAlert.Text = "90";
-					mTimerAlertValue = 90;
-				}
-
-				Config.Instance.TimerAlertSeconds = mTimerAlertValue;
-				Config.Save();
-			}
-		}
-
-		private void CheckboxBringHsToForegorund_Checked(object sender, RoutedEventArgs e)
-		{
-			if(!_initialized)
-				return;
-			Config.Instance.BringHsToForeground = true;
-			Config.Save();
-		}
-
-		private void CheckboxBringHsToForegorund_Unchecked(object sender, RoutedEventArgs e)
-		{
-			if(!_initialized)
-				return;
-			Config.Instance.BringHsToForeground = false;
-			Config.Save();
-		}
-
-		private void CheckboxFlashHs_Checked(object sender, RoutedEventArgs e)
-		{
-			if(!_initialized)
-				return;
-			Config.Instance.FlashHsOnTurnStart = true;
-			Config.Save();
-		}
-
-		private void CheckboxFlashHs_Unchecked(object sender, RoutedEventArgs e)
-		{
-			if(!_initialized)
-				return;
-			Config.Instance.FlashHsOnTurnStart = false;
-			Config.Save();
-		}
-
-		private void CheckboxTimerAlert_Checked(object sender, RoutedEventArgs e)
-		{
-			if(!_initialized)
-				return;
-			Config.Instance.TimerAlert = true;
-			TextboxTimerAlert.IsEnabled = true;
-			Config.Save();
-		}
-
-		private void CheckboxTimerAlert_Unchecked(object sender, RoutedEventArgs e)
-		{
-			if(!_initialized)
-				return;
-			Config.Instance.TimerAlert = false;
-			TextboxTimerAlert.IsEnabled = false;
-			Config.Save();
-		}
-
 		private void CheckBoxAutoUse_OnChecked(object sender, RoutedEventArgs e)
 		{
 			if(!_initialized)
@@ -231,27 +151,28 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 			Config.Save();
 		}
 
-		private void CheckBoxShowLastPlayedDate_Checked(object sender, RoutedEventArgs e)
+		private void ComboBoxDatesOnDecks_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
 		{
 			if(!_initialized)
 				return;
-			Config.Instance.ShowLastPlayedDateOnDeck = true;
+			Config.Instance.SelectedDateOnDecks = (DeckDateType)ComboBoxDeckDateType.SelectedItem;
+			Config.Instance.ShowDateOnDeck = (Config.Instance.SelectedDateOnDecks != DeckDateType.None) ? true : false;
 			Config.Save();
 			MessageDialogs.ShowRestartDialog();
 		}
 
-		private void CheckBoxShowLastPlayedDate_Unchecked(object sender, RoutedEventArgs e)
+		private void ComboBoxDateFormat_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
 		{
 			if(!_initialized)
 				return;
-			Config.Instance.ShowLastPlayedDateOnDeck = false;
+			Config.Instance.SelectedDateFormat = (DateFormat)ComboBoxDateFormat.SelectedItem;
 			Config.Save();
 			MessageDialogs.ShowRestartDialog();
 		}
 
 		private void CheckBoxAutoArchiveArenaDecks_Checked(object sender, RoutedEventArgs e)
 		{
-			if (!_initialized)
+			if(!_initialized)
 				return;
 			Config.Instance.AutoArchiveArenaDecks = true;
 			Config.Save();
@@ -259,17 +180,9 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 
 		private void CheckBoxAutoArchiveArenaDecks_Unchecked(object sender, RoutedEventArgs e)
 		{
-			if (!_initialized)
-				return;
-			Config.Instance.AutoArchiveArenaDecks = false;
-			Config.Save();
-		}
-
-		private void ComboBoxLastPlayedDateFormat_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-		{
 			if(!_initialized)
 				return;
-			Config.Instance.LastPlayedDateFormat = (LastPlayedDateFormat)ComboBoxLastPlayedDateFormat.SelectedItem;
+			Config.Instance.AutoArchiveArenaDecks = false;
 			Config.Save();
 		}
 
@@ -360,6 +273,42 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Tracker
 		protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
 		{
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+		}
+
+		private void CheckBoxAutoDeckDetecion_OnChecked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.AutoDeckDetection = true;
+			Config.Save();
+			Core.MainWindow.AutoDeckDetection(true);
+		}
+
+		private void CheckBoxAutoDeckDetection_OnUnchecked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.AutoDeckDetection = false;
+			Config.Save();
+			Core.MainWindow.AutoDeckDetection(false);
+		}
+
+		private void CheckboxShowMyGamesPanel_OnChecked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.ShowMyGamesPanel = true;
+			Core.MainWindow.UpdateMyGamesPanelVisibility();
+			Config.Save();
+		}
+
+		private void CheckboxShowMyGamesPanel_OnUnchecked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.ShowMyGamesPanel = false;
+			Core.MainWindow.UpdateMyGamesPanelVisibility();
+			Config.Save();
 		}
 	}
 }

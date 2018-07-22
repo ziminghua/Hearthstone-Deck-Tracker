@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,8 +13,6 @@ namespace Hearthstone_Deck_Tracker.Utility.Themes
 {
 	public abstract class CardBarImageBuilder
 	{
-		protected const string BarImageDir = "Images/Bars";
-
 		protected Card Card;
 		protected string ThemeDir;
 		protected DrawingGroup DrawingGroup = new DrawingGroup();
@@ -118,13 +116,13 @@ namespace Hearthstone_Deck_Tracker.Utility.Themes
 		protected virtual void AddCardImage() => AddCardImage(ImageRect, false);
 		protected void AddCardImage(Rect rect, bool offsetByCountBox)
 		{
-			var cardFile = Path.Combine(BarImageDir, Card.Id + ".png");
-			if(File.Exists(cardFile))
+			var bmp = ImageCache.GetCardImage(Card);
+			if(bmp != null)
 			{
 				if(offsetByCountBox && (Math.Abs(Card.Count) > 1 || Card.Rarity == Rarity.LEGENDARY))
-					AddChild(cardFile, rect.Move(ImageOffset, 0));
+					AddChild(bmp, rect.Move(ImageOffset, 0));
 				else
-					AddChild(cardFile, rect);
+					AddChild(bmp, rect);
 			}
 		}
 
@@ -246,7 +244,11 @@ namespace Hearthstone_Deck_Tracker.Utility.Themes
 		protected void AddLegendaryIcon(Rect rect) => AddChild(Required[ThemeElement.LegendaryIcon], rect);
 
 		protected virtual void AddCost() => AddCost(CostTextRect);
-		protected void AddCost(Rect rect) => AddText(Card.Cost, CostFontSize, rect, Card.ColorPlayer, NumbersTypeFace, 3.0, true);
+		protected void AddCost(Rect rect)
+		{
+			if(!Card.HideStats)
+				AddText(Card.Cost, CostFontSize, rect, Card.ColorPlayer, NumbersTypeFace, 3.0, true);
+		}
 
 		protected virtual void AddCardName() => AddCardName(new Rect(38, 8, FrameRect.Width - BoxRect.Width - 38, 34));
 		protected void AddCardName(Rect rect)
@@ -260,6 +262,9 @@ namespace Hearthstone_Deck_Tracker.Utility.Themes
 
 		protected void AddChild(string uri, Rect rect)
 			=> DrawingGroup.Children.Add(new ImageDrawing(new BitmapImage(new Uri(uri, UriKind.Relative)), rect));
+
+		protected void AddChild(BitmapImage bmp, Rect rect)
+			=> DrawingGroup.Children.Add(new ImageDrawing(bmp, rect));
 
 		protected void AddChild(ThemeElementInfo element)
 		{

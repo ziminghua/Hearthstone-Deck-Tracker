@@ -19,14 +19,6 @@ namespace HDTTests.Hearthstone
 		}
 
 		[TestMethod, TestCategory("Web")]
-		public void Hearthstats()
-		{
-			Deck expected = CreateDeck();
-			Deck found = DeckImporter.Import(@"https://hearthstats.net/decks/senfglas-patron--248").Result;
-			Assert.IsTrue(AreDecksEqual(expected, found));
-		}
-
-		[TestMethod, TestCategory("Web")]
 		public void Hearthpwn()
 		{
 			Deck expected = CreateDeck();
@@ -103,14 +95,6 @@ namespace HDTTests.Hearthstone
 		{
 			Deck expected = CreateDeck("Commanding Shout;1", "Unstable Ghoul;1", "Gnomish Inventor;1", "Dread Corsair;2");
 			Deck found = DeckImporter.Import(@"http://www.hearthstoneheroes.de/decks/grim-patron-oder-grimmiger-gast-von-trump-inspiriert/").Result;
-			Assert.IsTrue(AreDecksEqual(expected, found));
-		}
-
-		[TestMethod, TestCategory("Web")]
-		public void EliteHearthstone()
-		{
-			Deck expected = CreateDeck("Inner Rage;2", "Loot Hoarder;2", "Cruel Taskmaster;0", "Gnomish Inventor;0");
-			Deck found = DeckImporter.Import(@"http://www.elitehearthstone.net/deck-7918-patron-warrior").Result;
 			Assert.IsTrue(AreDecksEqual(expected, found));
 		}
 

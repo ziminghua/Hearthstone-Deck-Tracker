@@ -7,10 +7,12 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Hearthstone_Deck_Tracker.Controls.Error;
 using Hearthstone_Deck_Tracker.Plugins;
 using Hearthstone_Deck_Tracker.Utility.Extensions;
+using Hearthstone_Deck_Tracker.Utility.Logging;
 using Hearthstone_Deck_Tracker.Windows;
 using Squirrel;
 
@@ -69,7 +71,7 @@ namespace Hearthstone_Deck_Tracker
 				{
 					sr.WriteLine("########## " + DateTime.Now + " ##########");
 					sr.WriteLine(e.Exception);
-					sr.WriteLine(Core.MainWindow.Options.OptionsTrackerLogging.TextBoxLog.Text);
+					sr.WriteLine("Logfile: " + Log.CurrentLogFile);
 				}
 #endif
 				e.Handled = true;
@@ -83,5 +85,7 @@ namespace Hearthstone_Deck_Tracker
 			ShutdownMode = ShutdownMode.OnExplicitShutdown;
 			Core.Initialize();
 		}
+
+		private void HandleManipulationBoundaryFeedback(object sender, ManipulationBoundaryFeedbackEventArgs e) => e.Handled = true;
 	}
 }

@@ -23,21 +23,16 @@ namespace Hearthstone_Deck_Tracker.Importing
 	{
 		internal static readonly Dictionary<string, Func<string, Task<Deck>>> Websites = new Dictionary<string, Func<string, Task<Deck>>>
 		{
-			{"hearthstats", Hearthstats.Import},
-			{"hss.io", Hearthstats.Import},
 			{"hearthpwn", Hearthpwn.Import},
 			{"marduktv", Marduktv.Import},
-			{"hearthhead", Hearthhead.Import},
 			{"hearthstoneplayers", Hearthstoneplayers.Import},
 			{"tempostorm", Tempostorm.Import},
 			{"hearthstonetopdecks", Hearthstonetopdecks.Import},
 			{"hearthstonetopdeck.", Hearthstonetopdeck.Import},
-			{"hearthnews.fr", HearthnewsFr.Import},
 			{"arenavalue", Arenavalue.Import},
 			{"hearthstone-decks", Hearthstonedecks.Import},
 			{"heartharena", Heartharena.Import},
 			{"hearthstoneheroes", Hearthstoneheroes.Import},
-			{"elitehearthstone", EliteHearthstone.Import},
 			{"icy-veins", Icyveins.Import},
 			{"hearthbuilder", Hearthbuilder.Import},
 			{"manacrystals", Manacrystals.Import},
@@ -73,12 +68,17 @@ namespace Hearthstone_Deck_Tracker.Importing
 			var website = Websites.FirstOrDefault(x => url.Contains(x.Key));
 			if(website.Value != null)
 			{
+				Log.Info("Using custom importer...");
 				var deck = await website.Value.Invoke(url);
 				if(deck == null)
-					return null;
+				{
+					Log.Info("Custom importer failed. Checking for meta tags...");
+					return await MetaTagImporter.TryFindDeck(url);
+				}
 				deck.Cards = new ObservableCollection<Card>(deck.Cards.Where(x => x.Id != Database.UnknownCardId));
 				return deck;
 			}
+			Log.Info("Using meta tags importer...");
 			return await MetaTagImporter.TryFindDeck(url);
 		}
 
@@ -87,7 +87,7 @@ namespace Hearthstone_Deck_Tracker.Importing
 			try
 			{
 				ConstructedDecksCache = GetConstructedDecks();
-				var newDecks = GetImportedDecks(ConstructedDecksCache);
+				var newDecks = GetImportedDecks(ConstructedDecksCache, DeckList.Instance.Decks);
 				Log.Info($"Found {ConstructedDecksCache.Count} decks, {newDecks.Count} new");
 				foreach(var deck in newDecks)
 				{
@@ -105,7 +105,8 @@ namespace Hearthstone_Deck_Tracker.Importing
 		}
 
 		private static List<HearthMirror.Objects.Deck> GetConstructedDecks()
-			=> Reflection.GetDecks().Where(x => x.Cards.Sum(c => c.Count) == 30 && x.Type != BrawlDeckType).ToList();
+			=> Reflection.GetDecks()?.Where(x => x.Cards.Sum(c => c.Count) == 30 && x.Type != BrawlDeckType).ToList()
+				?? new List<HearthMirror.Objects.Deck>();
 
 		public static List<ImportedDeck> FromBrawl()
 		{
@@ -113,7 +114,7 @@ namespace Hearthstone_Deck_Tracker.Importing
 			{
 				BrawlDecksCache = GetBrawlDecks();
 				Log.Info($"Found {BrawlDecksCache.Count} decks");
-				return GetImportedDecks(BrawlDecksCache);
+				return GetImportedDecks(BrawlDecksCache, DeckList.Instance.Decks);
 			}
 			catch(Exception e)
 			{
@@ -123,16 +124,16 @@ namespace Hearthstone_Deck_Tracker.Importing
 		}
 
 		private static List<HearthMirror.Objects.Deck> GetBrawlDecks()
-			=> Reflection.GetDecks().Where(x => x.Type == BrawlDeckType).ToList();
+			=> Reflection.GetDecks()?.Where(x => x.Type == BrawlDeckType).ToList() ?? new List<HearthMirror.Objects.Deck>();
 
-		private static List<ImportedDeck> GetImportedDecks(IEnumerable<HearthMirror.Objects.Deck> decks)
+		public static List<ImportedDeck> GetImportedDecks(IEnumerable<HearthMirror.Objects.Deck> decks, IList<Deck> localDecks)
 		{
 			var importedDecks = new List<ImportedDeck>();
 			var hsDecks = decks.ToList();
 			foreach (var deck in hsDecks)
 			{
 				var otherDecks = hsDecks.Except(new[] {deck});
-				var existing = DeckList.Instance.Decks.Where(x => otherDecks.All(d => d.Id != x.HsId)).Select(x =>
+				var existing = localDecks.Where(x => otherDecks.All(d => d.Id != x.HsId)).Select(x =>
 					new
 					{
 						Deck = x,
@@ -142,13 +143,13 @@ namespace Hearthstone_Deck_Tracker.Importing
 					}).Where(x => x.IdMatch || x.CardMatch).ToList();
 				if(!existing.Any())
 				{
-					var iDeck = new ImportedDeck(deck, null);
+					var iDeck = new ImportedDeck(deck, null, localDecks);
 					if(!string.IsNullOrEmpty(iDeck.Class))
 						importedDecks.Add(iDeck);
 				}
 				else if(!existing.Any(x => x.IdMatch && x.CardMatch) && existing.Any(x => x.IdMatch ^ x.CardMatch))
 				{
-					var iDeck = new ImportedDeck(deck, existing.Select(x => x.Deck).ToList());
+					var iDeck = new ImportedDeck(deck, existing.Select(x => x.Deck).ToList(), localDecks);
 					if(!string.IsNullOrEmpty(iDeck.Class))
 						importedDecks.Add(iDeck);
 				}

@@ -12,14 +12,11 @@ using HearthDb.Enums;
 using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.FlyoutControls;
 using Hearthstone_Deck_Tracker.Hearthstone;
-using Hearthstone_Deck_Tracker.HearthStats.API;
 using Hearthstone_Deck_Tracker.Stats;
 using Hearthstone_Deck_Tracker.Utility;
-using Hearthstone_Deck_Tracker.Utility.Extensions;
 using Hearthstone_Deck_Tracker.Utility.Logging;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
-using static System.StringComparison;
 using static MahApps.Metro.Controls.Dialogs.MessageDialogStyle;
 
 #endregion
@@ -63,8 +60,6 @@ namespace Hearthstone_Deck_Tracker.Windows
 		private const string LocLogConfigDescription3 = "MessageDialogs_LogConfig_Description3";
 		private const string LocLogConfigButtonInstructions = "MessageDialogs_LogConfig_Button_Instructions";
 		private const string LocLogConfigButtonClose = "MessageDialogs_LogConfig_Button_Close";
-
-		//LocUtil.Get()}
 
 		public static async Task<MessageDialogResult> ShowDeleteGameStatsMessage(this MetroWindow window, GameStats stats)
 			=> await window.ShowMessageAsync(LocUtil.Get(LocDeleteGameStatsTitle),
@@ -140,7 +135,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			{
 				try
 				{
-					Clipboard.SetText(url);
+					Clipboard.SetDataObject(url);
 				}
 				catch(Exception ex)
 				{
@@ -183,16 +178,15 @@ namespace Hearthstone_Deck_Tracker.Windows
 				Helper.TryOpenUrl("https://github.com/HearthSim/Hearthstone-Deck-Tracker/wiki/Setting-up-the-log.config");
 		}
 
-		public static async void ShowMissingCardsMessage(this MetroWindow window, Deck deck)
+		public static async Task<MessageDialogResult> ShowMissingCardsMessage(this MetroWindow window, Deck deck, bool exportDialog)
 		{
 			if(!deck.MissingCards.Any())
 			{
-				await window.ShowMessageAsync("No missing cards",
+				return await window.ShowMessageAsync("No missing cards",
 						"No cards were missing when you last exported this deck. (or you have not recently exported this deck)",
 						Affirmative, new Settings {AffirmativeButtonText = "OK"});
-				return;
 			}
-			var message = "The following cards were not found:\n";
+			var message = "You are missing the following cards:\n";
 			var totalDust = 0;
 			var sets = new List<string>();
 			foreach(var card in deck.MissingCards)
@@ -205,8 +199,8 @@ namespace Hearthstone_Deck_Tracker.Windows
 					sets.Add("and the Naxxramas DLC ");
 				else if(card.Set == HearthDbConverter.SetConverter(CardSet.PROMO))
 					sets.Add("and Promotion cards ");
-				else if(card.Set == HearthDbConverter.SetConverter(CardSet.REWARD))
-					sets.Add("and the Reward cards ");
+				else if(card.Set == HearthDbConverter.SetConverter(CardSet.HOF))
+					sets.Add("and the Hall of Fame cards ");
 				else if(card.Set == HearthDbConverter.SetConverter(CardSet.BRM))
 					sets.Add("and the Blackrock Mountain DLC ");
 				else if(card.Set == HearthDbConverter.SetConverter(CardSet.LOE))
@@ -217,7 +211,15 @@ namespace Hearthstone_Deck_Tracker.Windows
 					totalDust += card.DustCost * card.Count;
 			}
 			message += $"\n\nYou need {totalDust} dust {string.Join("", sets.Distinct())}to craft the missing cards.";
-			await window.ShowMessageAsync("Export incomplete", message, Affirmative, new Settings {AffirmativeButtonText = "OK"});
+			var style = exportDialog ? AffirmativeAndNegative : Affirmative;
+			var settings = new Settings {AffirmativeButtonText = "OK"};
+			if(exportDialog)
+			{
+				settings.AffirmativeButtonText = "Export";
+				settings.NegativeButtonText = "Cancel";
+				message += "\n\nExport anyway? (this will not craft the cards)";
+			}
+			return await window.ShowMessageAsync("Missing cards", message, style, settings);
 		}
 
 		public static async Task<bool> ShowAddGameDialog(this MetroWindow window, Deck deck)
@@ -231,13 +233,6 @@ namespace Hearthstone_Deck_Tracker.Windows
 			if(game == null)
 				return false;
 			deck.DeckStats.AddGameResult(game);
-			if(Config.Instance.HearthStatsAutoUploadNewGames)
-			{
-				if(game.GameMode == GameMode.Arena)
-					HearthStatsManager.UploadArenaMatchAsync(game, deck, true, true).Forget();
-				else
-					HearthStatsManager.UploadMatchAsync(game, deck.GetSelectedDeckVersion(), true, true).Forget();
-			}
 			DeckStatsList.Save();
 			Core.MainWindow.DeckPickerList.UpdateDecks(forceUpdate: new[] {deck});
 			return true;
@@ -246,6 +241,24 @@ namespace Hearthstone_Deck_Tracker.Windows
 		public static async Task<DeckType?> ShowDeckTypeDialog(this MetroWindow window)
 		{
 			var dialog = new DeckTypeDialog();
+			await window.ShowMetroDialogAsync(dialog);
+			var type = await dialog.WaitForButtonPressAsync();
+			await window.HideMetroDialogAsync(dialog);
+			return type;
+		}
+
+		public static async Task<string> ShowWebImportingDialog(this MetroWindow window)
+		{
+			var dialog = new WebImportingDialog();
+			await window.ShowMetroDialogAsync(dialog);
+			var type = await dialog.WaitForButtonPressAsync();
+			await window.HideMetroDialogAsync(dialog);
+			return type;
+		}
+
+		public static async Task<ImportingChoice?> ShowImportingChoiceDialog(this MetroWindow window)
+		{
+			var dialog = new ImportingChoiceDialog();
 			await window.ShowMetroDialogAsync(dialog);
 			var type = await dialog.WaitForButtonPressAsync();
 			await window.HideMetroDialogAsync(dialog);
@@ -262,47 +275,18 @@ namespace Hearthstone_Deck_Tracker.Windows
 			await window.HideMetroDialogAsync(dialog);
 			if(result == null)
 				return false;
-			if(Config.Instance.HearthStatsAutoUploadNewGames && HearthStatsAPI.IsLoggedIn)
-			{
-				var deck = DeckList.Instance.Decks.FirstOrDefault(d => d.DeckId == game.DeckId);
-				if(deck != null)
-				{
-					if(game.GameMode == GameMode.Arena)
-						HearthStatsManager.UpdateArenaMatchAsync(game, deck, true, true);
-					else
-						HearthStatsManager.UpdateMatchAsync(game, deck.GetVersion(game.PlayerDeckVersion), true, true);
-				}
-			}
 			DeckStatsList.Save();
 			Core.MainWindow.DeckPickerList.UpdateDecks();
 			return true;
 		}
 
-		public static async Task<bool> ShowCheckHearthStatsMatchDeletionDialog(this MetroWindow window)
+		public static async Task<SelectLanguageOperation> ShowSelectLanguageDialog(this MetroWindow window)
 		{
-			if(Config.Instance.HearthStatsAutoDeleteMatches.HasValue)
-				return Config.Instance.HearthStatsAutoDeleteMatches.Value;
-			var dialogResult =
-				await
-				window.ShowMessageAsync("Delete match(es) on HearthStats?", "You can change this setting at any time in the HearthStats menu.",
-				                        AffirmativeAndNegative,
-				                        new MetroDialogSettings {AffirmativeButtonText = "yes (always)", NegativeButtonText = "no (never)"});
-			Config.Instance.HearthStatsAutoDeleteMatches = dialogResult == MessageDialogResult.Affirmative;
-			Core.MainWindow.MenuItemCheckBoxAutoDeleteGames.IsChecked = Config.Instance.HearthStatsAutoDeleteMatches;
-			Config.Save();
-			return Config.Instance.HearthStatsAutoDeleteMatches != null && Config.Instance.HearthStatsAutoDeleteMatches.Value;
-		}
-
-		public static async Task<bool> ShowLanguageSelectionDialog(this MetroWindow window)
-		{
-			var english = await
-				window.ShowMessageAsync("Select language", "", AffirmativeAndNegative,
-										new Settings
-										{
-											AffirmativeButtonText = Helper.LanguageDict.First(x => x.Value == "enUS").Key,
-											NegativeButtonText = Helper.LanguageDict.First(x => x.Value == Config.Instance.SelectedLanguage).Key
-										}) == MessageDialogResult.Affirmative;
-			return english;
+			var dialog = new SelectLanguageDialog();
+			await window.ShowMetroDialogAsync(dialog);
+			var result = await dialog.WaitForButtonPressAsync();
+			await window.HideMetroDialogAsync(dialog);
+			return result;
 		}
 
 		private static bool _awaitingMainWindowOpen;
@@ -333,6 +317,26 @@ namespace Hearthstone_Deck_Tracker.Windows
 			_awaitingMainWindowOpen = false;
 		}
 
+		internal static async void ShowDevUpdatesMessage(this MetroWindow window)
+		{
+			while(window.Visibility != Visibility.Visible || window.WindowState == WindowState.Minimized)
+				await Task.Delay(1000);
+			var result = await window.ShowMessageAsync("Development updates",
+				"You just updated to a stable release but still have development updates enabled.\n"
+				+ "Keeping these enabled will automatically update HDT to the next development build once it becomes available.\n\n"
+				+ "Note: Development builds might be unstable. When in doubt click disable.",
+				AffirmativeAndNegative,
+				new Settings
+				{
+					AffirmativeButtonText = "Keep enabled",
+					NegativeButtonText = "Disable",
+				});
+			var allowDevUpdates = result == MessageDialogResult.Affirmative;
+			Config.Instance.AllowDevUpdates = allowDevUpdates;
+			Config.Instance.CheckForDevUpdates = allowDevUpdates;
+			Config.Save();
+		}
+
 		public class Settings : MetroDialogSettings
 		{
 			public Settings()
@@ -347,5 +351,11 @@ namespace Hearthstone_Deck_Tracker.Windows
 		public bool Cancelled { get; set; }
 		public bool SaveLocal { get; set; }
 		public bool Upload { get; set; }
+	}
+
+	public class SelectLanguageOperation
+	{
+		public string SelectedLanguage { get; set; }
+		public bool IsCanceled { get; set; }
 	}
 }

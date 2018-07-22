@@ -29,25 +29,13 @@ namespace Hearthstone_Deck_Tracker.Windows
 {
 	public partial class MainWindow
 	{
-		private void BtnWeb_Click(object sender, RoutedEventArgs e) => ImportDeck();
-
 		public async void ImportDeck(string url = null)
 		{
 			var result = await ImportDeckFromUrl(url);
-			if(result.WasCancelled)
+			if (result.WasCancelled)
 				return;
-			if(result.Deck != null)
-			{
-				var reimport = EditingDeck && _newDeck != null && _newDeck.Url == result.Deck.Url;
-
-				if(reimport) //keep old notes
-					result.Deck.Note = _newDeck.Note;
-
-				SetNewDeck(result.Deck, reimport);
-				TagControlEdit.SetSelectedTags(result.Deck.Tags);
-				if(Config.Instance.AutoSaveOnImport)
-					SaveDeckWithOverwriteCheck();
-			}
+			if (result.Deck != null)
+				await ShowImportingChoice(result.Deck);
 			else
 				await this.ShowMessageAsync("No deck found", "Could not find a deck on" + Environment.NewLine + result.Url);
 		}
@@ -99,8 +87,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 		{
 			try
 			{
-				var validUrls = DeckImporter.Websites.Keys.Select(x => x.Split('.')[0]).ToArray();
-				return await this.ShowInputAsync("Import deck", "Some supported websites:\n" + validUrls.Aggregate((x, next) => x + ", " + next), new MessageDialogs.Settings());
+				return await this.ShowWebImportingDialog();
 			}
 			catch(Exception e)
 			{
@@ -109,7 +96,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			}
 		}
 
-		private async void BtnIdString_Click(object sender, RoutedEventArgs e)
+		internal async void ImportFromIdString()
 		{
 			try
 			{
@@ -135,8 +122,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 					var card = Database.GetCardFromId(splitEntry[0]);
 					if(card.Id == "UNKNOWN")
 						continue;
-					int count;
-					int.TryParse(splitEntry[1], out count);
+					int.TryParse(splitEntry[1], out var count);
 					card.Count = count;
 
 					if(string.IsNullOrEmpty(deck.Class) && card.GetPlayerClass != "Neutral")
@@ -144,9 +130,10 @@ namespace Hearthstone_Deck_Tracker.Windows
 
 					deck.Cards.Add(card);
 				}
-				SetNewDeck(deck);
 				if(Config.Instance.AutoSaveOnImport)
-					SaveDeckWithOverwriteCheck();
+					DeckManager.SaveDeck(deck);
+				else
+					ShowDeckEditorFlyout(deck, true);
 			}
 			catch(Exception ex)
 			{
@@ -154,58 +141,14 @@ namespace Hearthstone_Deck_Tracker.Windows
 			}
 		}
 
-		private async void BtnClipboardText_Click(object sender, RoutedEventArgs e)
-		{
-			try
-			{
-				if(NetDeck.CheckForClipboardImport())
-				{
-					if(!Config.Instance.NetDeckClipboardCheck.HasValue)
-					{
-						Options.OptionsTrackerImporting.CheckboxImportNetDeck.IsChecked = true;
-						Config.Instance.NetDeckClipboardCheck = true;
-						Config.Save();
-					}
-					return;
-				}
-				if(Clipboard.ContainsText())
-				{
-					var english = true;
-					if(Config.Instance.SelectedLanguage != "enUS")
-					{
-						try
-						{
-							english = await this.ShowLanguageSelectionDialog();
-						}
-						catch(Exception ex)
-						{
-							Log.Error(ex);
-						}
-					}
-					var deck = Helper.ParseCardString(Clipboard.GetText(), !english);
-					if(deck != null)
-					{
-						SetNewDeck(deck);
-						if(Config.Instance.AutoSaveOnImport)
-							SaveDeckWithOverwriteCheck();
-					}
-				}
-			}
-			catch(Exception ex)
-			{
-				Log.Error(ex);
-			}
-		}
-
-
-		private void BtnFile_Click(object sender, RoutedEventArgs e)
+		internal void ImportFromFile()
 		{
 			var dialog = new OpenFileDialog {Title = "Select Deck File", DefaultExt = "*.xml;*.txt", Filter = "Deck Files|*.txt;*.xml"};
 			dialog.Multiselect = true;
 			var dialogResult = dialog.ShowDialog();
 			if(dialogResult == true)
 			{
-				foreach(String file in dialog.FileNames)
+				foreach(var file in dialog.FileNames)
 				{
 					try
 					{
@@ -214,7 +157,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 						if(file.EndsWith(".txt"))
 						{
 							using(var sr = new StreamReader(file))
-								deck = Helper.ParseCardString(sr.ReadToEnd());
+								deck = StringImporter.Import(sr.ReadToEnd());
 						}
 						else if(file.EndsWith(".xml"))
 						{
@@ -224,9 +167,10 @@ namespace Hearthstone_Deck_Tracker.Windows
 								card.Load();
 							TagControlEdit.SetSelectedTags(deck.Tags);
 						}
-						SetNewDeck(deck);
 						if(Config.Instance.AutoSaveOnImport || dialog.FileNames.Length > 1)
-							SaveDeckWithOverwriteCheck();
+							DeckManager.SaveDeck(deck);
+						else
+							ShowDeckEditorFlyout(deck, true);
 					}
 					catch(Exception ex)
 					{
@@ -236,7 +180,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 			}
 		}
 
-		private void BtnLastGame_Click(object sender, RoutedEventArgs e)
+		internal void ImportFromLastGame()
 		{
 			if(Core.Game.DrawnLastGame == null)
 				return;
@@ -252,10 +196,8 @@ namespace Hearthstone_Deck_Tracker.Windows
 					deck.Class = card.PlayerClass;
 			}
 
-			SetNewDeck(deck);
+			ShowDeckEditorFlyout(deck, true);
 		}
-
-		private void BtnArena_Click(object sender, RoutedEventArgs e) => StartArenaImporting().Forget();
 
 		public async Task StartArenaImporting()
 		{
@@ -268,7 +210,7 @@ namespace Hearthstone_Deck_Tracker.Windows
 					new MessageDialogs.Settings() {AffirmativeButtonText = "Start Hearthstone", NegativeButtonText = "Cancel"});
 				if(result == MessageDialogResult.Negative)
 					return;
-				Helper.StartHearthstoneAsync().Forget();
+				HearthstoneRunner.StartHearthstone().Forget();
 				controller = await this.ShowProgressAsync("Importing arena deck", "Waiting for Hearthstone...", true);
 				while(!Core.Game.IsRunning)
 				{
@@ -348,10 +290,6 @@ namespace Hearthstone_Deck_Tracker.Windows
 			SelectDeck(arenaDeck, true);
 		}
 
-		private void BtnConstructed_Click(object sender, RoutedEventArgs e) => ShowImportDialog(false);
-
-		private void BtnBrawl_Click(object sender, RoutedEventArgs e) => ShowImportDialog(true);
-
 		internal async void ShowImportDialog(bool brawl)
 		{
 			DeckImportingFlyout.Reset(brawl);
@@ -373,6 +311,38 @@ namespace Hearthstone_Deck_Tracker.Windows
 			var decks = brawl ? DeckImporter.FromBrawl() : DeckImporter.FromConstructed();
 			DeckImportingFlyout.SetDecks(decks);
 			Core.MainWindow.ActivateWindow();
+		}
+
+		private bool _clipboardImportingInProgress;
+		internal async void ImportFromClipboard()
+		{
+			if(_clipboardImportingInProgress)
+				return;
+			_clipboardImportingInProgress = true;
+			var deck = await ClipboardImporter.Import();
+			if(deck == null)
+			{
+				const string dialogTitle = "MainWindow_Import_Dialog_NoDeckFound_Title";
+				const string dialogText = "MainWindow_Import_Dialog_NoDeckFound_Text";
+				this.ShowMessage(LocUtil.Get(dialogTitle), LocUtil.Get(dialogText)).Forget();
+				_clipboardImportingInProgress = false;
+				return;
+			}
+			await ShowImportingChoice(deck);
+			_clipboardImportingInProgress = false;
+		}
+
+		private async Task ShowImportingChoice(Deck deck)
+		{
+			var choice = Config.Instance.PasteImportingChoice == ImportingChoice.Manual
+				? await this.ShowImportingChoiceDialog() : Config.Instance.PasteImportingChoice;
+			if(choice.HasValue)
+			{
+				if(choice.Value == ImportingChoice.SaveLocal)
+					ShowDeckEditorFlyout(deck, true);
+				else
+					ShowExportFlyout(deck);
+			}
 		}
 	}
 }

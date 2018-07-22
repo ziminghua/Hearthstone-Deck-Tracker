@@ -1,8 +1,9 @@
-﻿#region
+#region
 
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -57,6 +58,9 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			}
 		}
 
+		[XmlIgnore]
+		public int DbfIf => _dbCard?.DbfId ?? 0;
+
 		/// The mechanics attribute, such as windfury or taunt, comes from the cardDB json file
 		[XmlIgnore]
 		public string[] Mechanics;
@@ -109,8 +113,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			{
 				if(_selectedLanguage.HasValue)
 					return _selectedLanguage.Value;
-				Locale lang;
-				if(!Enum.TryParse(Config.Instance.SelectedLanguage, out lang))
+				if(!Enum.TryParse(Config.Instance.SelectedLanguage, out Locale lang))
 					lang = Locale.enUS;
 				_selectedLanguage = lang;
 				return _selectedLanguage.Value;
@@ -139,8 +142,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			Set = HearthDbConverter.SetConverter(dbCard.Set);
 			foreach(var altLangStr in Config.Instance.AlternativeLanguages)
 			{
-				Locale altLang;
-				if(Enum.TryParse(altLangStr, out altLang))
+				if(Enum.TryParse(altLangStr, out Locale altLang))
 				{
 					AlternativeNames.Add(dbCard.GetLocName(altLang));
 					AlternativeTexts.Add(dbCard.GetLocText(altLang));
@@ -156,6 +158,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			{
 				_count = value;
 				OnPropertyChanged();
+				OnPropertyChanged(nameof(Background));
 			}
 		}
 
@@ -209,10 +212,21 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		public Visibility ShowAlternativeLanguageTextInTooltip => AlternativeNames.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
 		[XmlIgnore]
-		public Visibility ShowIconsInTooltip => Type == "Spell" || Type == "Enchantment" || Type == "Hero Power" ? Visibility.Hidden : Visibility.Visible;
+		public bool HasVisibleStats => Type != "Spell" && Type != "Enchantment" && Type != "Hero Power" && !IsPlayableHeroCard;
+
+		[XmlIgnore]
+		public Visibility ShowIconsInTooltip => HasVisibleStats ? Visibility.Visible : Visibility.Hidden;
+
+		[XmlIgnore]
+		public Visibility ShowArmorIconInTooltip => IsPlayableHeroCard ? Visibility.Visible : Visibility.Hidden;
+
+		[XmlIgnore]
+		public Visibility ShowHealthValueInTooltip => HasVisibleStats || IsPlayableHeroCard ? Visibility.Visible : Visibility.Hidden;
 
 		[XmlIgnore]
 		public string Set { get; set; }
+
+		public CardSet? CardSet => _dbCard?.Set;
 
 		[XmlIgnore]
 		public string Race { get; set; }
@@ -224,7 +238,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		public int? Durability { get; set; }
 
 		[XmlIgnore]
-		public int DurabilityOrHealth => Durability ?? Health;
+		public int ArmorDurabilityOrHealth => (IsPlayableHeroCard ? _dbCard?.Armor : Durability) ?? Health;
 
 		[XmlIgnore]
 		public string Type { get; set; }
@@ -235,6 +249,10 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		[XmlIgnore]
 		public int Cost { get; set; }
 
+		public bool HideStats => _dbCard?.Entity.GetTag(GameTag.HIDE_STATS) == 1;
+
+		[XmlIgnore]
+		public bool IsPlayableHeroCard => Type == "Hero" && CardSet != HearthDb.Enums.CardSet.CORE && CardSet != HearthDb.Enums.CardSet.HERO_SKINS;
 
 		[XmlIgnore]
 		public int Overload
@@ -284,7 +302,18 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			set { _localizedName = value; }
 		}
 
-		public string[] EntourageCardIds => _dbCard != null ? _dbCard.EntourageCardIds : new string[0];
+		public string[] EntourageCardIds
+		{
+			get
+			{
+				var entourageIds = _dbCard?.EntourageCardIds ?? new string[0];
+
+				return (CardIds.EntourageAdditionalCardIds.TryGetValue(_dbCard.Id, out string[] additionalIds)) ?
+					entourageIds.Union(additionalIds).ToArray() :
+					entourageIds;
+			}
+		}
+
 
 		[XmlIgnore]
 		public int InHandCount
@@ -324,6 +353,17 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public string GetPlayerClass => PlayerClass ?? "Neutral";
 
+		public bool IsClass(string playerClass)
+		{
+			if(GetPlayerClass == playerClass)
+				return true;
+			var classGroup = _dbCard?.Entity.GetTag(GameTag.MULTI_CLASS_GROUP) ?? 0;
+			if(classGroup == 0)
+				return false;
+			return Helper.MultiClassGroups[(MultiClassGroup)classGroup]
+				.Any(x => string.Equals(x.ToString(), playerClass, StringComparison.CurrentCultureIgnoreCase));
+		}
+
 		public SolidColorBrush ColorPlayer
 		{
 			get
@@ -343,18 +383,9 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public string CardFileName => Name.ToLowerInvariant().Replace(' ', '-').Replace(":", "").Replace("'", "-").Replace(".", "").Replace("!", "").Replace(",", "");
 
-		public FontFamily Font
-		{
-			get
-			{
-				var lang = Config.Instance.SelectedLanguage;
-				var font = new FontFamily();
-				// if the language uses a Latin script use Belwe font
-				if(Helper.LatinLanguages.Contains(lang) || Config.Instance.NonLatinUseDefaultFont == false)
-					font = new FontFamily(new Uri("pack://application:,,,/"), "./resources/#Belwe Bd BT");
-				return font;
-			}
-		}
+		public static FontFamily DefaultFont => Helper.UseLatinFont() ? new FontFamily(new Uri("pack://application:,,,/"), "./Resources/#Chunkfive") : new FontFamily();
+
+		public static FontWeight DefaultFontWeight => Helper.UseLatinFont() ? FontWeights.Normal : FontWeights.Bold;
 
 		public DrawingBrush Background
 		{
@@ -363,11 +394,9 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				if(Id == null || Name == null)
 					return new DrawingBrush();
 				var cardImageObj = new CardImageObject(this);
-				Dictionary<int, CardImageObject> cache;
-				if(CardImageCache.TryGetValue(Id, out cache))
+				if(CardImageCache.TryGetValue(Id, out Dictionary<int, CardImageObject> cache))
 				{
-					CardImageObject cached;
-					if(cache.TryGetValue(cardImageObj.GetHashCode(), out cached))
+					if(cache.TryGetValue(cardImageObj.GetHashCode(), out CardImageObject cached))
 						return cached.Image;
 				}
 				try

@@ -86,8 +86,22 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Overlay
 			ComboBoxCthun.SelectedItem = Config.Instance.OpponentCthunCounter;
 			ComboBoxSpells.ItemsSource = new[] {DisplayMode.Always, DisplayMode.Never};
 			ComboBoxSpells.SelectedItem = Config.Instance.OpponentSpellsCounter;
+			ComboBoxJade.ItemsSource = Enum.GetValues(typeof(DisplayMode)).Cast<DisplayMode>();
+			ComboBoxJade.SelectedItem = Config.Instance.OpponentJadeCounter;
+			CheckboxHideOpponentCardAge.IsChecked = Config.Instance.HideOpponentCardAge;
+			CheckboxHideOpponentCardMarks.IsChecked = Config.Instance.HideOpponentCardMarks;
+			CheckboxHideSecrets.IsChecked = Config.Instance.HideSecrets;
 
 			ElementSorterOpponent.IsPlayer = false;
+			SetPanel();
+
+			Core.Overlay.UpdateOpponentLayout();
+			Core.Windows.OpponentWindow.UpdateOpponentLayout();
+			_initialized = true;
+		}
+
+		private void SetPanel()
+		{
 			foreach(var panel in Config.Instance.DeckPanelOrderOpponent)
 			{
 				switch(panel)
@@ -114,9 +128,12 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Overlay
 						break;
 				}
 			}
-			Core.Overlay.UpdateOpponentLayout();
-			Core.Windows.OpponentWindow.UpdateOpponentLayout();
-			_initialized = true;
+		}
+
+		public void ReloadUI()
+		{
+			ElementSorterOpponent.Clear();
+			SetPanel();
 		}
 
 		private void CheckboxHighlightDiscarded_Checked(object sender, RoutedEventArgs e)
@@ -240,6 +257,14 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Overlay
 			Config.Save();
 		}
 
+		private void ComboBoxJade_SelectionChanged(object sender, SelectionChangedEventArgs e)
+		{
+			if (!_initialized)
+				return;
+			Config.Instance.OpponentJadeCounter = (DisplayMode)ComboBoxJade.SelectedItem;
+			Config.Save();
+		}
+
 		private void CheckBoxAttack_Checked(object sender, RoutedEventArgs e)
 		{
 			if(!_initialized)
@@ -254,6 +279,56 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.Options.Overlay
 				return;
 			Config.Instance.HideOpponentAttackIcon = true;
 			Config.Save();
+		}
+
+		private void CheckboxHideOpponentCardAge_Unchecked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.HideOpponentCardAge = false;
+			SaveConfig(true);
+		}
+
+		private void CheckboxHideOpponentCardAge_Checked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.HideOpponentCardAge = true;
+			SaveConfig(true);
+		}
+
+		private void CheckboxHideOpponentCardMarks_Unchecked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.HideOpponentCardMarks = false;
+			SaveConfig(true);
+		}
+
+		private void CheckboxHideOpponentCardMarks_Checked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.HideOpponentCardMarks = true;
+			SaveConfig(true);
+		}
+
+		private void CheckboxHideSecrets_Checked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.HideSecrets = true;
+			SaveConfig(false);
+			Core.Overlay.HideSecrets();
+		}
+
+		private void CheckboxHideSecrets_Unchecked(object sender, RoutedEventArgs e)
+		{
+			if(!_initialized)
+				return;
+			Config.Instance.HideSecrets = false;
+			SaveConfig(false);
+			Core.Overlay.ShowSecrets(Core.Game.SecretsManager.GetSecretList());
 		}
 	}
 }

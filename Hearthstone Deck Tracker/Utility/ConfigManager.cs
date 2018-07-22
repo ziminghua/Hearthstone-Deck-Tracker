@@ -1,11 +1,8 @@
 ﻿#region
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
-using System.Windows;
 using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.Plugins;
 using Hearthstone_Deck_Tracker.Utility.Logging;
@@ -127,42 +124,6 @@ namespace Hearthstone_Deck_Tracker.Utility
 					converted = true;
 				}
 #endif
-				if(configVersion <= new Version(0, 6, 6, 0))
-				{
-					if(Config.Instance.ExportClearX == 0.86)
-					{
-						Config.Instance.Reset(nameof(Config.ExportClearX));
-						converted = true;
-					}
-					if(Config.Instance.ExportClearY == 0.16)
-					{
-						Config.Instance.Reset(nameof(Config.ExportClearY));
-						converted = true;
-					}
-					if(Config.Instance.ExportClearCheckYFixed == 0.2)
-					{
-						Config.Instance.Reset(nameof(Config.ExportClearCheckYFixed));
-						converted = true;
-					}
-				}
-				if(configVersion <= new Version(0, 7, 6, 0))
-				{
-					if(Config.Instance.ExportCard1X != 0.04)
-					{
-						Config.Instance.Reset(nameof(Config.ExportCard1X));
-						converted = true;
-					}
-					if(Config.Instance.ExportCard2X != 0.2)
-					{
-						Config.Instance.Reset(nameof(Config.ExportCard2X));
-						converted = true;
-					}
-					if(Config.Instance.ExportCardsY != 0.168)
-					{
-						Config.Instance.Reset(nameof(Config.ExportCardsY));
-						converted = true;
-					}
-				}
 				if(configVersion <= new Version(0, 9, 6, 0))
 				{
 					if(!Config.Instance.PanelOrderPlayer.Contains("Fatigue Counter"))
@@ -203,8 +164,7 @@ namespace Hearthstone_Deck_Tracker.Utility
 				}
 				if(configVersion <= new Version(0, 13, 16, 0))
 				{
-					MetroTheme theme;
-					if(Enum.TryParse(Config.Instance.ThemeName, out theme))
+					if(Enum.TryParse(Config.Instance.ThemeName, out MetroTheme theme))
 					{
 						Config.Instance.AppTheme = theme;
 						converted = true;
@@ -345,7 +305,7 @@ namespace Hearthstone_Deck_Tracker.Utility
 				Config.Save();
 			}
 
-			if(configVersion != null && new Version(currentVersion.Major, currentVersion.Minor, currentVersion.Build) > new Version(configVersion.Major, configVersion.Minor, configVersion.Build))
+			if(configVersion != null && currentVersion > configVersion)
 				UpdatedVersion = currentVersion;
 		}
 	}

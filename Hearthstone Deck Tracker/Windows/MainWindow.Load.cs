@@ -1,15 +1,11 @@
-﻿#region
+#region
 
-using System.Diagnostics;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using Hearthstone_Deck_Tracker.Enums;
-using Hearthstone_Deck_Tracker.Utility;
 using Hearthstone_Deck_Tracker.Utility.Extensions;
 using MahApps.Metro.Controls;
-using MahApps.Metro.Controls.Dialogs;
 using Point = System.Drawing.Point;
 
 #endregion
@@ -52,9 +48,8 @@ namespace Hearthstone_Deck_Tracker.Windows
 			}
 
 			Options.Load(Core.Game);
-			Help.TxtblockVersion.Text = "v" + Helper.GetCurrentVersion().ToVersionString();
 
-			Core.TrayIcon.SetContextMenuProperty("autoSelectDeck", "Checked", Config.Instance.AutoDeckDetection);
+			Core.TrayIcon.MenuItemAutoSelect.Checked = Config.Instance.AutoDeckDetection;
 
 			// Don't select the 'archived' class on load
 			var selectedClasses = Config.Instance.SelectedDeckPickerClasses.Where(c => c.ToString() != "Archived").ToList();
@@ -63,7 +58,6 @@ namespace Hearthstone_Deck_Tracker.Windows
 
 			DeckPickerList.SelectClasses(selectedClasses);
 			DeckPickerList.SelectDeckType(Config.Instance.SelectedDeckPickerDeckType, true);
-			DeckPickerList.UpdateAutoSelectToggleButton();
 
 			SortFilterDecksFlyout.LoadTags(DeckList.Instance.AllTags);
 
@@ -74,27 +68,22 @@ namespace Hearthstone_Deck_Tracker.Windows
 
 			SortFilterDecksFlyout.ComboboxDeckSorting.SelectedItem = Config.Instance.SelectedDeckSorting;
 			SortFilterDecksFlyout.CheckBoxSortByClass.IsChecked = Config.Instance.SortDecksByClass;
+			SortFilterDecksFlyout.CheckBoxSortFavorites.IsChecked = Config.Instance.SortDecksFavoritesFirst;
 			SortFilterDecksFlyout.ComboboxDeckSortingArena.SelectedItem = Config.Instance.SelectedDeckSortingArena;
 			SortFilterDecksFlyout.CheckBoxSortByClassArena.IsChecked = Config.Instance.SortDecksByClassArena;
 
 			ManaCurveMyDecks.Visibility = Config.Instance.ManaCurveMyDecks ? Visibility.Visible : Visibility.Collapsed;
 
-			Core.TrayIcon.SetContextMenuProperty("classCardsFirst", "Checked", Config.Instance.CardSortingClassFirst);
-			Core.TrayIcon.SetContextMenuProperty("useNoDeck", "Checked", DeckList.Instance.ActiveDeck == null);
+			Core.TrayIcon.MenuItemClassCardsFirst.Checked = Config.Instance.CardSortingClassFirst;
+			Core.TrayIcon.MenuItemUseNoDeck.Checked = DeckList.Instance.ActiveDeck == null;
 
-			MenuItemCheckBoxSyncOnStart.IsChecked = Config.Instance.HearthStatsSyncOnStart;
-			MenuItemCheckBoxAutoUploadDecks.IsChecked = Config.Instance.HearthStatsAutoUploadNewDecks;
-			MenuItemCheckBoxAutoUploadGames.IsChecked = Config.Instance.HearthStatsAutoUploadNewGames;
-			MenuItemCheckBoxAutoSyncBackground.IsChecked = Config.Instance.HearthStatsAutoSyncInBackground;
-			MenuItemCheckBoxAutoDeleteDecks.IsChecked = Config.Instance.HearthStatsAutoDeleteDecks;
-			MenuItemCheckBoxAutoDeleteGames.IsChecked = Config.Instance.HearthStatsAutoDeleteMatches;
+			UpdateMyGamesPanelVisibility();
 		}
 
 		public void ReloadTags()
 		{
 			SortFilterDecksFlyout.LoadTags(DeckList.Instance.AllTags);
 			TagControlEdit.LoadTags(DeckList.Instance.AllTags.Where(tag => tag != "All" && tag != "None").ToList());
-			MenuItemQuickSetTag.ItemsSource = TagControlEdit.Tags;
 		}
 
 		private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
@@ -105,7 +94,6 @@ namespace Hearthstone_Deck_Tracker.Windows
 				Helper.DpiScalingX = presentationsource.CompositionTarget.TransformToDevice.M11;
 				Helper.DpiScalingY = presentationsource.CompositionTarget.TransformToDevice.M22;
 			}
-			LoadHearthStatsMenu();
 			LoadAndUpdateDecks();
 			UpdateFlyoutAnimationsEnabled();
 		}
