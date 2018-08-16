@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using HearthDb.Enums;
 using HearthMirror.Objects;
 using Hearthstone_Deck_Tracker.API;
 using Hearthstone_Deck_Tracker.Enums;
+using Hearthstone_Deck_Tracker.Enums.Hearthstone;
 using Hearthstone_Deck_Tracker.Hearthstone;
 using Hearthstone_Deck_Tracker.Hearthstone.Entities;
 using Hearthstone_Deck_Tracker.Importing;
@@ -17,6 +17,7 @@ using Hearthstone_Deck_Tracker.Utility.Extensions;
 using Hearthstone_Deck_Tracker.Utility.Logging;
 using Hearthstone_Deck_Tracker.Windows;
 using Card = Hearthstone_Deck_Tracker.Hearthstone.Card;
+using CardIds = HearthDb.CardIds;
 using Deck = Hearthstone_Deck_Tracker.Hearthstone.Deck;
 
 namespace Hearthstone_Deck_Tracker
@@ -35,6 +36,8 @@ namespace Hearthstone_Deck_Tracker
 		public static async Task DetectCurrentDeck()
 		{
 			var deck = DeckList.Instance.ActiveDeck;
+			if(deck == null && Core.Game.Player.SetAside.Any(x => x.CardId == CardIds.Collectible.Neutral.WhizbangTheWonderful))
+				deck = new Deck();
 			if(deck == null || deck.DeckId == IgnoredDeckId || _waitingForClass || _waitingForUserInput)
 				return;
 			if(string.IsNullOrEmpty(Core.Game.Player.Class))
@@ -350,6 +353,50 @@ namespace Hearthstone_Deck_Tracker
 				return true;
 			}
 			return false;
+		}
+
+		internal static async void AutoSelectDeckById(IGame game, long id)
+		{
+			Log.Info($"Trying to select deck for id={id}");
+			if(id <= 0)
+			{
+				if(game.CurrentMode == Mode.ADVENTURE)
+				{
+					while(game.IsDungeonMatch == null)
+						await Task.Delay(500);
+					if(game.IsDungeonMatch.Value)
+						return;
+				}
+				Log.Info("No selected deck found, using no-deck mode");
+				Core.MainWindow.SelectDeck(null, true);
+				return;
+			}
+			AutoImportConstructed(false, game.CurrentMode == Mode.TAVERN_BRAWL);
+			var selectedDeck = DeckList.Instance.Decks.FirstOrDefault(x => x.HsId == id);
+			if(selectedDeck == null)
+			{
+				Log.Warn($"No deck with id={id} found");
+				return;
+			}
+			Log.Info("Found selected deck: " + selectedDeck.Name);
+			var hsDeck = DeckImporter.FromConstructed(false).FirstOrDefault(x => x.Deck.Id == id)?.Deck;
+			var selectedVersion = selectedDeck.GetSelectedDeckVersion();
+			if(hsDeck != null && !selectedVersion.Cards.All(c => hsDeck.Cards.Any(c2 => c.Id == c2.Id && c.Count == c2.Count)))
+			{
+				var nonSelectedVersions = selectedDeck.VersionsIncludingSelf.Where(v => v != selectedVersion.Version).Select(selectedDeck.GetVersion);
+				var version = nonSelectedVersions.FirstOrDefault(v => v.Cards.All(c => hsDeck.Cards.Any(c2 => c.Id == c2.Id && c.Count == c2.Count)));
+				if(version != null)
+				{
+					selectedDeck.SelectVersion(version);
+					Log.Info("Switching to version: " + version.Version.ShortVersionString);
+				}
+			}
+			else if(Equals(selectedDeck, DeckList.Instance.ActiveDeck))
+			{
+				Log.Info("Already using the correct deck");
+				return;
+			}
+			Core.MainWindow.SelectDeck(selectedDeck, true);
 		}
 
 		public static void SaveDeck(Deck deck, bool invokeApi = true)

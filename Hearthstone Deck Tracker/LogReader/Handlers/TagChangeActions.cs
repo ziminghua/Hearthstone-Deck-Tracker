@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using HearthDb.Enums;
 using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.Hearthstone;
-using Hearthstone_Deck_Tracker.Hearthstone.Entities;
 using Hearthstone_Deck_Tracker.LogReader.Interfaces;
 using Hearthstone_Deck_Tracker.Utility.Logging;
 using static HearthDb.Enums.GameTag;
@@ -27,7 +26,7 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 				case CARDTYPE:
 					return () => CardTypeChange(gameState, id, game, value);
 				case LAST_CARD_PLAYED:
-					return () => LastCardPlayedChange(gameState, value);
+					return () => LastCardPlayedChange(gameState, game, value);
 				case DEFENDING:
 					return () => DefendingChange(gameState, id, game, value);
 				case ATTACKING:
@@ -36,8 +35,6 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 					return () => ProposedDefenderChange(game, value);
 				case PROPOSED_ATTACKER:
 					return () => ProposedAttackerChange(game, value);
-				case NUM_MINIONS_PLAYED_THIS_TURN:
-					return () => NumMinionsPlayedThisTurnChange(gameState, game, value);
 				case PREDAMAGE:
 					return () => PredamageChange(gameState, id, game, value);
 				case NUM_TURNS_IN_PLAY:
@@ -57,8 +54,21 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 				case CREATOR:
 				case DISPLAYED_CREATOR:
 					return () => CreatorChanged(id, value, game);
+				case WHIZBANG_DECK_ID:
+					return () => WhizbangDeckIdChange(id, value, game);
 			}
 			return null;
+		}
+
+		private void WhizbangDeckIdChange(int id, int value, IGame game)
+		{
+			if(value == 0)
+				return;
+			if(!game.Entities.TryGetValue(id, out var entity))
+				return;
+			if(!entity.IsPlayer)
+				return;
+			DeckManager.AutoSelectDeckById(game, value);
 		}
 
 		private void CreatorChanged(int id, int value, IGame game)
@@ -89,6 +99,19 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 				}
 				if(creatorId == game.GameEntity?.Id)
 					return;
+				// All cards created by Whizbang have a creator tag set
+				if(game.Entities.TryGetValue(creatorId, out var creator))
+				{
+					if(creator.CardId == CardIds.Collectible.Neutral.WhizbangTheWonderful)
+						return;
+					var controller = creator.GetTag(CONTROLLER);
+					var usingWhizbang = controller == game.Player?.Id
+										&& (game.PlayerEntity?.HasTag(WHIZBANG_DECK_ID) ?? false)
+										|| controller == game.Opponent?.Id
+										&& (game.OpponentEntity?.HasTag(WHIZBANG_DECK_ID) ?? false);
+					if(usingWhizbang && creator.IsInSetAside && creator.Info.OriginalZone == SETASIDE)
+						return;
+				}
 				entity.Info.Created = true;
 			}
 		}
@@ -128,7 +151,23 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 			gameState.WasInProgress = true;
 		}
 
-		private void LastCardPlayedChange(IHsGameState gameState, int value) => gameState.LastCardPlayed = value;
+		private void LastCardPlayedChange(IHsGameState gameState, IGame game, int value)
+		{
+			gameState.LastCardPlayed = value;
+			if(!(game.PlayerEntity?.IsCurrentPlayer ?? false))
+				return;
+			if(!game.Entities.TryGetValue(value, out var entity) || entity == null || !entity.IsMinion)
+				return;
+			if(entity.HasTag(MODULAR))
+			{
+				var pos = entity.GetTag(ZONE_POSITION);
+				var neighbour = game.Player?.Board.FirstOrDefault(x => x.GetTag(ZONE_POSITION) == pos + 1);
+				if(neighbour?.Card?.Race?.Equals(Race.MECHANICAL.ToString(),
+						StringComparison.CurrentCultureIgnoreCase) ?? false)
+					return;
+			}
+			gameState.GameHandler.HandlePlayerMinionPlayed();
+		}
 
 		private void DefendingChange(IHsGameState gameState, int id, IGame game, int value)
 		{
@@ -147,14 +186,6 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 		private void ProposedDefenderChange(IGame game, int value) => game.ProposedDefender = value;
 
 		private void ProposedAttackerChange(IGame game, int value) => game.ProposedAttacker = value;
-
-		private void NumMinionsPlayedThisTurnChange(IHsGameState gameState, IGame game, int value)
-		{
-			if(value <= 0)
-				return;
-			if(game.PlayerEntity?.IsCurrentPlayer ?? false)
-				gameState.GameHandler.HandlePlayerMinionPlayed();
-		}
 
 		private void PredamageChange(IHsGameState gameState, int id, IGame game, int value)
 		{

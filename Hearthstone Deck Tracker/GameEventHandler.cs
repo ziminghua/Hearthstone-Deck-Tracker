@@ -72,6 +72,12 @@ namespace Hearthstone_Deck_Tracker
 			if(_game.IsInMenu)
 				return;
 
+			if(!_handledGameEnd)
+			{
+				Log.Warn("Game end has not been handled");
+				HandleGameEnd();
+			}
+
 			Log.Info("Game is now in menu.");
 			_game.IsInMenu = true;
 
@@ -326,6 +332,8 @@ namespace Hearthstone_Deck_Tracker
 		private DateTime _lastGameStartTimestamp = DateTime.MinValue;
 		public void HandleGameStart(DateTime timestamp)
 		{
+			_game.InvalidateMatchInfoCache();
+			Reflection.Reinitialize();
 			if(_game.CurrentGameMode == Practice && !_game.IsInMenu && !_handledGameEnd
 				&& _lastGameStartTimestamp  > DateTime.MinValue && timestamp > _lastGameStartTimestamp)
 				HandleAdventureRestart();

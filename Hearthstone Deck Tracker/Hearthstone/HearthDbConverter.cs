@@ -38,7 +38,8 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			{27, "Journey to Un'Goro"},
 			{1001, "Knights of the Frozen Throne"},
 			{1004, "Kobolds and Catacombs"},
-			{1125, "The Witchwood"}
+			{1125, "The Witchwood"},
+			{1127, "The Boomsday Project"}
 		};
 
 		public static string ConvertClass(CardClass cardClass) => (int)cardClass < 2 || (int)cardClass > 10
@@ -92,6 +93,10 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				case GameType.GT_TAVERNBRAWL:
 				case GameType.GT_TB_2P_COOP:
 				case GameType.GT_TB_1P_VS_AI:
+				case GameType.GT_FSG_BRAWL_VS_FRIEND:
+				case GameType.GT_FSG_BRAWL:
+				case GameType.GT_FSG_BRAWL_1P_VS_AI:
+				case GameType.GT_FSG_BRAWL_2P_COOP:
 					return GameMode.Brawl;
 				default:
 					return GameMode.None;

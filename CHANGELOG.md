@@ -1,3 +1,37 @@
+## __Release v1.7.5 - 2018-08-15__
+
+__Fixes__:
+- Fixed an issue where Autodefense Matrix would be greyed out when attacking minions with divine shield.
+- (Hopefully) Fixed an issue where the player and opponent decks could be swapped in some cases.
+- Fixed an issue where it would sometimes still be possible to tell that the opponent was playing a Whizbang deck. 
+- Improved automatic deck selection when playing the Whizbang deck.
+
+
+## __Release v1.7.4 - 2018-08-09__
+
+- Fixed several crashes.
+
+
+## __Release v1.7.2 - 2018-08-09__
+
+__New__:
+- Added tracking for several Boomsday cards.
+- All possible decks for Whizbang are now automatically imported when his deck is found.
+
+__Fixes__:
+- Fixed an issue where Boomsday packs were missing as an arena reward.
+- Fixed an issue where Whizbang decks were not tracked correctly.
+- Fixed an issue where secrets would be ruled out when using Magnetic minions as a buff.
+- (Hopefully) Fixed "Uneven Permissons" issues in some cases.
+
+
+## __Release v1.7.1 - 2018-08-02__
+__Updated for The Boomsday Project__
+
+- Fixed several crashes.
+- Tracking for cards created by Boomsday cards will follow in a later update.
+
+
 ## __Release v1.6.9 - 2018-07-10__
 __Updated for Hearthstone 11.4.0.25252__
 

@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using HearthDb.Enums;
 using static HearthDb.CardIds;
 
 #endregion
@@ -70,6 +71,19 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 			{"Warlock", Collectible.Warlock.Guldan},
 			{"Mage", Collectible.Mage.JainaProudmoore},
 			{"Priest", Collectible.Priest.AnduinWrynn}
+		};
+
+		public static readonly Dictionary<CardClass, string> CardClassHero = new Dictionary<CardClass, string>
+		{
+			{CardClass.WARRIOR, Collectible.Warrior.GarroshHellscream},
+			{CardClass.SHAMAN, Collectible.Shaman.Thrall},
+			{CardClass.ROGUE, Collectible.Rogue.ValeeraSanguinar},
+			{CardClass.PALADIN, Collectible.Paladin.UtherLightbringer},
+			{CardClass.HUNTER, Collectible.Hunter.Rexxar},
+			{CardClass.DRUID, Collectible.Druid.MalfurionStormrage},
+			{CardClass.WARLOCK, Collectible.Warlock.Guldan},
+			{CardClass.MAGE, Collectible.Mage.JainaProudmoore},
+			{CardClass.PRIEST, Collectible.Priest.AnduinWrynn}
 		};
 
 		// cards that should have an entourage list but don't in the game data
@@ -143,7 +157,8 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 			public static class Paladin
 			{
-				public static List<string> All => new List<string> {Avenge, CompetitiveSpirit, EyeForAnEye, GetawayKodo, HiddenWisdom, HandOfSalvation, NobleSacrifice, Redemption, Repentance, SacredTrial};
+				public static List<string> All => new List<string> {AutodefenseMatrix, Avenge, CompetitiveSpirit, EyeForAnEye, GetawayKodo, HiddenWisdom, HandOfSalvation, NobleSacrifice, Redemption, Repentance, SacredTrial};
+				public static string AutodefenseMatrix => Collectible.Paladin.AutodefenseMatrix;
 				public static string Avenge => Collectible.Paladin.Avenge;
 				public static string CompetitiveSpirit => Collectible.Paladin.CompetitiveSpirit;
 				public static string EyeForAnEye => Collectible.Paladin.EyeForAnEye;

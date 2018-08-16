@@ -7,6 +7,7 @@ using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using System.Windows;
+using HearthMirror;
 using Hearthstone_Deck_Tracker.Controls.Stats;
 using Hearthstone_Deck_Tracker.Enums;
 using Hearthstone_Deck_Tracker.Hearthstone;
@@ -82,12 +83,13 @@ namespace Hearthstone_Deck_Tracker
 #endif
 			splashScreenWindow.ShowConditional();
 			Log.Initialize();
+			Reflection.Exception += e => Log.Warn("HearthMirror Exception: " + e);
 			ConfigManager.Run();
 			LocUtil.UpdateCultureInfo();
 			var newUser = ConfigManager.PreviousVersion == null;
 			LogConfigUpdater.Run().Forget();
 			LogConfigWatcher.Start();
-			UITheme.InitializeTheme();
+			UITheme.InitializeTheme().Forget();
 			ThemeManager.Run();
 			ResourceMonitor.Run();
 			Game = new GameV2();
