@@ -66,6 +66,10 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 				return;
 			if(!game.Entities.TryGetValue(id, out var entity))
 				return;
+			if(entity.IsControlledBy(game.Player.Id))
+				game.Player.IsPlayingWhizbang = true;
+			else if(entity.IsControlledBy(game.Opponent.Id))
+				game.Opponent.IsPlayingWhizbang = true;
 			if(!entity.IsPlayer)
 				return;
 			DeckManager.AutoSelectDeckById(game, value);
@@ -105,11 +109,9 @@ namespace Hearthstone_Deck_Tracker.LogReader.Handlers
 					if(creator.CardId == CardIds.Collectible.Neutral.WhizbangTheWonderful)
 						return;
 					var controller = creator.GetTag(CONTROLLER);
-					var usingWhizbang = controller == game.Player?.Id
-										&& (game.PlayerEntity?.HasTag(WHIZBANG_DECK_ID) ?? false)
-										|| controller == game.Opponent?.Id
-										&& (game.OpponentEntity?.HasTag(WHIZBANG_DECK_ID) ?? false);
-					if(usingWhizbang && creator.IsInSetAside && creator.Info.OriginalZone == SETASIDE)
+					var usingWhizbang = controller == game.Player?.Id && game.Player.IsPlayingWhizbang
+										|| controller == game.Opponent?.Id && game.Opponent.IsPlayingWhizbang;
+					if(usingWhizbang && creator.IsInSetAside)
 						return;
 				}
 				entity.Info.Created = true;
