@@ -545,6 +545,7 @@
     <Compile Include="Utility\Exceptions\ExportingInterruptedException.cs" />
     <Compile Include="Utility\LocUtil.cs" />
     <Compile Include="Utility\ResourceMonitor.cs" />
+    <Compile Include="Utility\Twitch\TwitchApiHelper.cs" />
     <Compile Include="Utility\Updating\ReleaseUrls.cs" />
     <Compile Include="Utility\Updating\StatusBarHelper.cs" />
     <Compile Include="Importing\ClipboardImporter.cs" />
@@ -1391,6 +1392,7 @@
     </Compile>
     <Compile Include="Utility\Updating\Updater.Squirrel.cs" />
     <Compile Include="Utility\Updating\Updater.Default.cs" />
+    <Resource Include="Images\icon-pogo.png" />
     <Resource Include="Resources\hearthstone-icon.png" />
     <Resource Include="Resources\collection_promo.jpg" />
     <Resource Include="Resources\hsreplay_banner.jpg" />
