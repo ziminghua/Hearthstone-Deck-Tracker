@@ -43,15 +43,15 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public static readonly Dictionary<string, string> HeroIdDict = new Dictionary<string, string>
 		{
-			{Collectible.Warrior.GarroshHellscream, "Warrior"},
-			{Collectible.Shaman.Thrall, "Shaman"},
-			{Collectible.Rogue.ValeeraSanguinar, "Rogue"},
-			{Collectible.Paladin.UtherLightbringer, "Paladin"},
-			{Collectible.Hunter.Rexxar, "Hunter"},
-			{Collectible.Druid.MalfurionStormrage, "Druid"},
-			{Collectible.Warlock.Guldan, "Warlock"},
-			{Collectible.Mage.JainaProudmoore, "Mage"},
-			{Collectible.Priest.AnduinWrynn, "Priest"},
+			{Collectible.Warrior.GarroshHellscreamHero, "Warrior"},
+			{Collectible.Shaman.ThrallHero, "Shaman"},
+			{Collectible.Rogue.ValeeraSanguinarHero, "Rogue"},
+			{Collectible.Paladin.UtherLightbringerHero, "Paladin"},
+			{Collectible.Hunter.RexxarHero, "Hunter"},
+			{Collectible.Druid.MalfurionStormrageHero, "Druid"},
+			{Collectible.Warlock.GuldanHero, "Warlock"},
+			{Collectible.Mage.JainaProudmooreHero, "Mage"},
+			{Collectible.Priest.AnduinWrynnHero, "Priest"},
 			{Collectible.Warlock.LordJaraxxus, "Jaraxxus"},
 			{Collectible.Neutral.MajordomoExecutus, "Ragnaros the Firelord"},
 			{"GILA_600", "Warrior"},
@@ -62,28 +62,28 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public static readonly Dictionary<string, string> HeroNameDict = new Dictionary<string, string>
 		{
-			{"Warrior", Collectible.Warrior.GarroshHellscream},
-			{"Shaman", Collectible.Shaman.Thrall},
-			{"Rogue", Collectible.Rogue.ValeeraSanguinar},
-			{"Paladin", Collectible.Paladin.UtherLightbringer},
-			{"Hunter", Collectible.Hunter.Rexxar},
-			{"Druid", Collectible.Druid.MalfurionStormrage},
-			{"Warlock", Collectible.Warlock.Guldan},
-			{"Mage", Collectible.Mage.JainaProudmoore},
-			{"Priest", Collectible.Priest.AnduinWrynn}
+			{"Warrior", Collectible.Warrior.GarroshHellscreamHero},
+			{"Shaman", Collectible.Shaman.ThrallHero},
+			{"Rogue", Collectible.Rogue.ValeeraSanguinarHero},
+			{"Paladin", Collectible.Paladin.UtherLightbringerHero},
+			{"Hunter", Collectible.Hunter.RexxarHero},
+			{"Druid", Collectible.Druid.MalfurionStormrageHero},
+			{"Warlock", Collectible.Warlock.GuldanHero},
+			{"Mage", Collectible.Mage.JainaProudmooreHero},
+			{"Priest", Collectible.Priest.AnduinWrynnHero}
 		};
 
 		public static readonly Dictionary<CardClass, string> CardClassHero = new Dictionary<CardClass, string>
 		{
-			{CardClass.WARRIOR, Collectible.Warrior.GarroshHellscream},
-			{CardClass.SHAMAN, Collectible.Shaman.Thrall},
-			{CardClass.ROGUE, Collectible.Rogue.ValeeraSanguinar},
-			{CardClass.PALADIN, Collectible.Paladin.UtherLightbringer},
-			{CardClass.HUNTER, Collectible.Hunter.Rexxar},
-			{CardClass.DRUID, Collectible.Druid.MalfurionStormrage},
-			{CardClass.WARLOCK, Collectible.Warlock.Guldan},
-			{CardClass.MAGE, Collectible.Mage.JainaProudmoore},
-			{CardClass.PRIEST, Collectible.Priest.AnduinWrynn}
+			{CardClass.WARRIOR, Collectible.Warrior.GarroshHellscreamHero},
+			{CardClass.SHAMAN, Collectible.Shaman.ThrallHero},
+			{CardClass.ROGUE, Collectible.Rogue.ValeeraSanguinarHero},
+			{CardClass.PALADIN, Collectible.Paladin.UtherLightbringerHero},
+			{CardClass.HUNTER, Collectible.Hunter.RexxarHero},
+			{CardClass.DRUID, Collectible.Druid.MalfurionStormrageHero},
+			{CardClass.WARLOCK, Collectible.Warlock.GuldanHero},
+			{CardClass.MAGE, Collectible.Mage.JainaProudmooreHero},
+			{CardClass.PRIEST, Collectible.Priest.AnduinWrynnHero}
 		};
 
 		// cards that should have an entourage list but don't in the game data
@@ -102,16 +102,6 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 		public static class Secrets
 		{
-			public static List<string> ArenaExcludes = new List<string>
-			{
-				Hunter.Snipe
-			};
-
-			public static List<string> ArenaOnly = new List<string>
-			{
-				Paladin.HandOfSalvation
-			};
-
 			public static List<string> FastCombat = new List<string>
 			{
 				Hunter.FreezingTrap,
@@ -123,7 +113,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 			public static class Hunter
 			{
-				public static List<string> All => new List<string> {BearTrap, CatTrick, DartTrap, ExplosiveTrap, FreezingTrap, HiddenCache, Misdirection, RatTrap, Snipe, SnakeTrap, VenomstrikeTrap, WanderingMonster};
+				public static List<string> All => new List<string> {BearTrap, CatTrick, DartTrap, ExplosiveTrap, FreezingTrap, HiddenCache, Misdirection, PressurePlate, RatTrap, Snipe, SnakeTrap, VenomstrikeTrap, WanderingMonster};
 				public static string BearTrap => Collectible.Hunter.BearTrap;
 				public static string CatTrick => Collectible.Hunter.CatTrick;
 				public static string DartTrap => Collectible.Hunter.DartTrap;
@@ -131,6 +121,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				public static string FreezingTrap => Collectible.Hunter.FreezingTrap;
 				public static string HiddenCache => Collectible.Hunter.HiddenCache;
 				public static string Misdirection => Collectible.Hunter.Misdirection;
+				public static string PressurePlate => Collectible.Hunter.PressurePlate;
 				public static string RatTrap => Collectible.Hunter.RatTrap;
 				public static string Snipe => Collectible.Hunter.Snipe;
 				public static string SnakeTrap => Collectible.Hunter.SnakeTrap;
@@ -140,11 +131,12 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 
 			public static class Mage
 			{
-				public static List<string> All => new List<string> {Counterspell, Duplicate, Effigy, ExplosiveRunes, FrozenClone, IceBarrier, IceBlock, ManaBind, MirrorEntity, PotionOfPolymorph, Spellbender, Vaporize};
+				public static List<string> All => new List<string> {Counterspell, Duplicate, Effigy, ExplosiveRunes, FlameWard, FrozenClone, IceBarrier, IceBlock, ManaBind, MirrorEntity, PotionOfPolymorph, Spellbender, SplittingImage, Vaporize};
 				public static string Counterspell => Collectible.Mage.Counterspell;
 				public static string Duplicate => Collectible.Mage.Duplicate;
 				public static string Effigy => Collectible.Mage.Effigy;
 				public static string ExplosiveRunes => Collectible.Mage.ExplosiveRunes;
+				public static string FlameWard => Collectible.Mage.FlameWard;
 				public static string FrozenClone => Collectible.Mage.FrozenClone;
 				public static string IceBarrier => Collectible.Mage.IceBarrier;
 				public static string IceBlock => Collectible.Mage.IceBlock;
@@ -152,12 +144,13 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				public static string MirrorEntity => Collectible.Mage.MirrorEntity;
 				public static string PotionOfPolymorph => Collectible.Mage.PotionOfPolymorph;
 				public static string Spellbender => Collectible.Mage.Spellbender;
+				public static string SplittingImage => Collectible.Mage.SplittingImage;
 				public static string Vaporize => Collectible.Mage.Vaporize;
 			}
 
 			public static class Paladin
 			{
-				public static List<string> All => new List<string> {AutodefenseMatrix, Avenge, CompetitiveSpirit, EyeForAnEye, GetawayKodo, HiddenWisdom, HandOfSalvation, NobleSacrifice, Redemption, Repentance, SacredTrial};
+				public static List<string> All => new List<string> {AutodefenseMatrix, Avenge, CompetitiveSpirit, EyeForAnEye, GetawayKodo, HiddenWisdom, HandOfSalvation, NeverSurrender, NobleSacrifice, Redemption, Repentance, SacredTrial};
 				public static string AutodefenseMatrix => Collectible.Paladin.AutodefenseMatrix;
 				public static string Avenge => Collectible.Paladin.Avenge;
 				public static string CompetitiveSpirit => Collectible.Paladin.CompetitiveSpirit;
@@ -165,6 +158,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 				public static string GetawayKodo => Collectible.Paladin.GetawayKodo;
 				public static string HandOfSalvation => NonCollectible.Paladin.HandOfSalvation;
 				public static string HiddenWisdom => Collectible.Paladin.HiddenWisdom;
+				public static string NeverSurrender => Collectible.Paladin.NeverSurrender;
 				public static string NobleSacrifice => Collectible.Paladin.NobleSacrifice;
 				public static string Redemption => Collectible.Paladin.Redemption;
 				public static string Repentance => Collectible.Paladin.Repentance;

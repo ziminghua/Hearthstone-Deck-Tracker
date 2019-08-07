@@ -36,5 +36,14 @@ namespace Hearthstone_Deck_Tracker.Enums
 
 		[LocDescription("Enum_ArenaRewardPacks_Boomsday")]
 		Boomsday = CardSet.BOOMSDAY,
+
+		[LocDescription("Enum_ArenaRewardPacks_Troll")]
+		Troll = CardSet.TROLL,
+
+		[LocDescription("Enum_ArenaRewardPacks_Dalaran")]
+		Dalaran = CardSet.DALARAN,
+
+		[LocDescription("Enum_ArenaRewardPacks_Uldum")]
+		Uldum = CardSet.ULDUM,
 	}
 }

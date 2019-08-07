@@ -1,3 +1,116 @@
+## **Release v1.8.14 - 2019-08-01**
+**Updated for Saviors of Uldum**
+
+
+## **Release v1.8.13 - 2019-07-01**
+**Updated for Hearthstone 14.6.0.31761**
+
+
+## **Release v1.8.12 - 2019-06-18**
+**Fixes**:
+- Fixed a couple of minor issues causing more information to be revealed than intended.
+
+
+## **Release v1.8.11 - 2019-06-03**
+**Updated for Hearthstone 14.4.0.31268**
+
+
+## **Release v1.8.10 - 2019-05-27**
+**Updated for Hearthstone 14.2.2.31022**
+- Added deck tracking support for the Dalaran Heist adventure
+
+
+## **Release v1.8.9 - 2019-05-16**
+**Updated for Hearthstone 14.2.0.30795**
+- Full support for the Dalaran Heist adventure will follow with a later update!
+
+
+## **Release v1.8.7 - 2019-04-13**
+**Fixes**:
+- Fixed various interactions with Augmented Elekk.
+- Fixed an issue where Never surrender would be greyed out with no minions on the board.
+
+
+## **Release v1.8.6 - 2019-04-11**
+**Fixes**:
+- Fixed an issue where an incorrect list of secrets would be displayed in Arena.
+- Fixed an issue where tooltips were not working correctly for some cards.
+
+
+## **Release v1.8.5 - 2019-04-09**
+__Updated for Year of the Dragon__
+
+
+## **Release v1.8.4 - 2019-04-04**
+__Updated for Rise of Shadows__
+
+
+## **Release v1.8.3 - 2019-03-16**
+**Fixes**:
+- Fixed an issue where Hakkar's Corrupted Blood would not be tracked correctly.
+- Fixed an issue with detecting the Twitch stream language for HSReplay.net intregration.
+
+
+## **Release v1.8.2 - 2019-03-15**
+**Updated for Hearthstone 13.4.0.29349**
+
+
+## **Release v1.8.1 - 2019-03-04**
+- Added additional features for Twitch VODs on HSReplay.net.
+
+
+## **Release v1.8.0 - 2019-02-05**
+**Updated for Hearthstone 13.2.0.28855**
+
+**New**:
+- Added an option to display the set of a card in the tooltip. (`options > overlay > general`)
+
+**Changes**:
+- Updated Rumble Run decks for recent changes.
+
+**Fixes**:
+- Fixed an issue where cards created by Augmented Elekk were not tracked.
+- Fixed an issue where Snipe was excluded from the possible secret in Arena.
+- Fixed several set icons.
+
+
+## __Release v1.7.16 - 2018-12-19__
+__Updated for Hearthstone 13.0.3.28329__
+
+
+## __Release v1.7.15 - 2018-12-13__
+
+__New__:
+- Added support for Rumble Run.
+
+__Fixes__:
+- Fixed an issue where Freezing Trap and Bear Trap would sometimes be incorrectly greyed out.
+
+
+## __Release v1.7.13 - 2018-11-29__
+__Updated for Rastakhan's Rumble__
+
+__Fixes__:
+- Fixed an issue where spells played by an opposing Grand Archivist were not tracked.
+- Fixed an issue where the gold tracker would not reset correctly sometimes.
+
+
+## __Release v1.7.12 - 2018-11-12__
+
+__Fixes__:
+- Fixed an issue where gold progress tracking was no longer working with Hearthstone 12.4.0.27641.
+
+
+## __Release v1.7.11 - 2018-11-05__
+__Updated for Hearthstone 12.4.0.27405__
+
+
+## __Release v1.7.10 - 2018-10-28__
+
+__Fixes__:
+- Fixed the Mage and Toki stater decks for Dungeon Run and Monster Hunt modes.
+
+
 ## __Release v1.7.9 - 2018-10-18__
 __Updated for Hearthstone 12.2.0.27358__
 

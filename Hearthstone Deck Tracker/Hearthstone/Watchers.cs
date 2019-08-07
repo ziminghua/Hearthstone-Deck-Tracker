@@ -18,8 +18,8 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		{
 			ArenaWatcher.OnCompleteDeck += (sender, args) => DeckManager.AutoImportArena(Config.Instance.SelectedArenaImportingBehaviour ?? ArenaImportingBehaviour.AutoImportSave, args.Info);
 			PackWatcher.NewPackEventHandler += (sender, args) => PackUploader.UploadPack(args.PackId, args.Cards);
-			DungeonRunWatcher.DungeonRunMatchStarted += DeckManager.DungeonRunMatchStarted;
-			DungeonRunWatcher.DungeonInfoChanged += DeckManager.UpdateDungeonRunDeck;
+			DungeonRunWatcher.DungeonRunMatchStarted += newRun => DeckManager.DungeonRunMatchStarted(newRun);
+			DungeonRunWatcher.DungeonInfoChanged += dungeonInfo => DeckManager.UpdateDungeonRunDeck(dungeonInfo);
 			FriendlyChallengeWatcher.OnFriendlyChallenge += OnFriendlyChallenge;
 		}
 
@@ -58,6 +58,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone
 		public bool InAiMatch => Core.Game.CurrentMode == Mode.GAMEPLAY && Core.Game.MatchInfo?.GameType == (int)GameType.GT_VS_AI;
 		public bool InAdventureScreen => Core.Game.CurrentMode == Mode.ADVENTURE;
 		public string OpponentHeroId => Core.Game.Opponent.Board.FirstOrDefault(x => x.IsHero)?.CardId;
+		public int OpponentHeroHealth => Core.Game.Opponent.Board.FirstOrDefault(x => x.IsHero)?.GetTag(GameTag.HEALTH) ?? 0;
 	}
 
 	public class HearthMirrorPackProvider : IPackProvider

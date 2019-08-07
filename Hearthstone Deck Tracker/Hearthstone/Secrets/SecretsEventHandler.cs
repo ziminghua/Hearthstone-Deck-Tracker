@@ -56,7 +56,7 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Secrets
 			{
 				if(!fastOnly)
 				{
-					if(freeSpaceOnBoard)
+					if(freeSpaceOnBoard && attacker.Health >= 1)
 						exclude.Add(Hunter.BearTrap);
 					exclude.Add(Mage.IceBarrier);
 				}
@@ -75,7 +75,9 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Secrets
 				if(attacker.IsMinion)
 				{
 					exclude.Add(Mage.Vaporize);
-					exclude.Add(Hunter.FreezingTrap);
+					exclude.Add(Mage.FlameWard);
+					if(attacker.Health >= 1)
+						exclude.Add(Hunter.FreezingTrap);
 				}
 			}
 			else
@@ -83,10 +85,14 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Secrets
 				if (!defender.HasTag(GameTag.DIVINE_SHIELD))
 					exclude.Add(Paladin.AutodefenseMatrix);
 
-				if(!fastOnly && freeSpaceOnBoard)
+				if(freeSpaceOnBoard)
 				{
-					exclude.Add(Hunter.SnakeTrap);
-					exclude.Add(Hunter.VenomstrikeTrap);
+					exclude.Add(Mage.SplittingImage);
+					if(!fastOnly)
+					{
+						exclude.Add(Hunter.SnakeTrap);
+						exclude.Add(Hunter.VenomstrikeTrap);
+					}
 				}
 
 				if(attacker.IsMinion)
@@ -283,6 +289,9 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Secrets
 			{
 				exclude.Add(Mage.Counterspell);
 
+				if(Game.OpponentMinionCount > 0)
+					exclude.Add(Paladin.NeverSurrender);
+
 				if(Game.OpponentHandCount < 10)
 					exclude.Add(Mage.ManaBind);
 
@@ -295,6 +304,9 @@ namespace Hearthstone_Deck_Tracker.Hearthstone.Secrets
 						exclude.Add(Mage.Spellbender);
 					exclude.Add(Hunter.CatTrick);
 				}
+
+				if (Game.PlayerMinionCount > 0)
+					exclude.Add(Hunter.PressurePlate);
 			}
 			else if(entity.IsMinion && Game.PlayerMinionCount > 3)
 				exclude.Add(Paladin.SacredTrial);

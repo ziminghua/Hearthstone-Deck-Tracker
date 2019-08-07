@@ -150,6 +150,7 @@ namespace HDTTests.Hearthstone.Secrets
 		public void SingleSecret_HeroToHero_PlayerAttackTest()
 		{
 			_playerMinion1.SetTag(GameTag.ZONE, (int)Zone.HAND);
+			_heroPlayer.SetTag(GameTag.HEALTH, Database.GetCardFromId(_heroPlayer.CardId).Health);
 			_game.SecretsManager.HandleAttack(_heroPlayer, _heroOpponent);
 			VerifySecrets(0, HunterSecrets.All, HunterSecrets.BearTrap, HunterSecrets.ExplosiveTrap, HunterSecrets.WanderingMonster);
 			VerifySecrets(1, MageSecrets.All, MageSecrets.IceBarrier);
@@ -170,10 +171,11 @@ namespace HDTTests.Hearthstone.Secrets
 		public void SingleSecret_MinionToHero_PlayerAttackTest()
 		{
 			_playerMinion1.SetTag(GameTag.ZONE, (int)Zone.PLAY);
+			_playerMinion1.SetTag(GameTag.HEALTH, Database.GetCardFromId(_playerMinion1.CardId).Health);
 			_game.SecretsManager.HandleAttack(_playerMinion1, _heroOpponent);
 			VerifySecrets(0, HunterSecrets.All, HunterSecrets.BearTrap, HunterSecrets.ExplosiveTrap,
 				HunterSecrets.FreezingTrap, HunterSecrets.Misdirection, HunterSecrets.WanderingMonster);
-			VerifySecrets(1, MageSecrets.All, MageSecrets.IceBarrier, MageSecrets.Vaporize);
+			VerifySecrets(1, MageSecrets.All, MageSecrets.IceBarrier, MageSecrets.Vaporize, MageSecrets.FlameWard);
 			VerifySecrets(2, PaladinSecrets.All, PaladinSecrets.NobleSacrifice);
 			VerifySecrets(3, RogueSecrets.All);
 
@@ -181,7 +183,7 @@ namespace HDTTests.Hearthstone.Secrets
 			_game.SecretsManager.HandleAttack(_playerMinion1, _heroOpponent);
 			VerifySecrets(0, HunterSecrets.All, HunterSecrets.BearTrap, HunterSecrets.ExplosiveTrap,
 				HunterSecrets.FreezingTrap, HunterSecrets.Misdirection, HunterSecrets.WanderingMonster);
-			VerifySecrets(1, MageSecrets.All, MageSecrets.IceBarrier, MageSecrets.Vaporize);
+			VerifySecrets(1, MageSecrets.All, MageSecrets.IceBarrier, MageSecrets.Vaporize, MageSecrets.FlameWard);
 			VerifySecrets(2, PaladinSecrets.All, PaladinSecrets.NobleSacrifice);
 			VerifySecrets(3, RogueSecrets.All, RogueSecrets.SuddenBetrayal);
 		}
@@ -191,7 +193,7 @@ namespace HDTTests.Hearthstone.Secrets
 		{
 			_game.SecretsManager.HandleAttack(_heroPlayer, _opponentMinion1);
 			VerifySecrets(0, HunterSecrets.All, HunterSecrets.SnakeTrap, HunterSecrets.VenomstrikeTrap);
-			VerifySecrets(1, MageSecrets.All);
+			VerifySecrets(1, MageSecrets.All, MageSecrets.SplittingImage);
 			VerifySecrets(2, PaladinSecrets.All, PaladinSecrets.NobleSacrifice, PaladinSecrets.AutodefenseMatrix);
 			VerifySecrets(3, RogueSecrets.All);
 		}
@@ -202,7 +204,7 @@ namespace HDTTests.Hearthstone.Secrets
 			_game.SecretsManager.HandleAttack(_playerMinion1, _opponentMinion1);
 			VerifySecrets(0, HunterSecrets.All, HunterSecrets.FreezingTrap, HunterSecrets.SnakeTrap,
 				HunterSecrets.VenomstrikeTrap);
-			VerifySecrets(1, MageSecrets.All);
+			VerifySecrets(1, MageSecrets.All, MageSecrets.SplittingImage);
 			VerifySecrets(2, PaladinSecrets.All, PaladinSecrets.NobleSacrifice, PaladinSecrets.AutodefenseMatrix);
 			VerifySecrets(3, RogueSecrets.All);
 		}
@@ -213,7 +215,7 @@ namespace HDTTests.Hearthstone.Secrets
 			_game.SecretsManager.HandleAttack(_playerMinion1, _opponentDivineShieldMinion);
 			VerifySecrets(0, HunterSecrets.All, HunterSecrets.FreezingTrap, HunterSecrets.SnakeTrap,
 				HunterSecrets.VenomstrikeTrap);
-			VerifySecrets(1, MageSecrets.All);
+			VerifySecrets(1, MageSecrets.All, MageSecrets.SplittingImage);
 			VerifySecrets(2, PaladinSecrets.All, PaladinSecrets.NobleSacrifice);
 			VerifySecrets(3, RogueSecrets.All);
 		}
@@ -284,6 +286,18 @@ namespace HDTTests.Hearthstone.Secrets
 		}
 
 		[TestMethod]
+		public void SingleSecret_MinionOnBoard_NoMinionTarget_SpellPlayed()
+		{
+			_opponentMinion1.SetTag(GameTag.ZONE, (int)Zone.PLAY);
+			_game.SecretsManager.HandleCardPlayed(_playerSpell2);
+			_game.GameTime.Time += TimeSpan.FromSeconds(1);
+			VerifySecrets(0, HunterSecrets.All, HunterSecrets.CatTrick);
+			VerifySecrets(1, MageSecrets.All, MageSecrets.Counterspell, MageSecrets.ManaBind);
+			VerifySecrets(2, PaladinSecrets.All, PaladinSecrets.NeverSurrender);
+			VerifySecrets(3, RogueSecrets.All);
+		}
+
+		[TestMethod]
 		public void SingleSecret_MinionInPlay_OpponentTurnStart()
 		{
 			_opponentEntity.SetTag(GameTag.CURRENT_PLAYER, 1);
@@ -346,6 +360,19 @@ namespace HDTTests.Hearthstone.Secrets
 			_game.SecretsManager.OnEntityRevealedAsMinion(_opponentCardInHand1);
 
 			VerifySecrets(0, HunterSecrets.All, HunterSecrets.HiddenCache, HunterSecrets.Snipe);
+		}
+
+		[TestMethod]
+		public void MultipleSecrets_MinionToHero_ExplosiveTrapTriggered_MinionDied_PlayerAttackTest()
+		{
+			_playerMinion1.SetTag(GameTag.ZONE, (int)Zone.PLAY);
+			_playerMinion1.SetTag(GameTag.HEALTH, -1);
+			_game.SecretsManager.HandleAttack(_playerMinion1, _heroOpponent);
+			VerifySecrets(0, HunterSecrets.All, HunterSecrets.ExplosiveTrap,
+				HunterSecrets.Misdirection, HunterSecrets.WanderingMonster);
+			VerifySecrets(1, MageSecrets.All, MageSecrets.IceBarrier, MageSecrets.Vaporize, MageSecrets.FlameWard);
+			VerifySecrets(2, PaladinSecrets.All, PaladinSecrets.NobleSacrifice);
+			VerifySecrets(3, RogueSecrets.All);
 		}
 
 		[TestMethod]

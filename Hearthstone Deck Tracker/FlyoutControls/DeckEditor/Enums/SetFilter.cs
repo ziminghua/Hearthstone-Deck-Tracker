@@ -38,5 +38,11 @@ namespace Hearthstone_Deck_Tracker.FlyoutControls.DeckEditor.Enums
 		GILNEAS = 1125,
 		[LocDescription("MainWindow_DeckBuilder_Filter_Set_Boomsday")]
 		BOOMSDAY = 1127,
+		[LocDescription("MainWindow_DeckBuilder_Filter_Set_Troll")]
+		TROLL = 1129,
+		[LocDescription("MainWindow_DeckBuilder_Filter_Set_Dalaran")]
+		DALARAN = 1130,
+		[LocDescription("MainWindow_DeckBuilder_Filter_Set_Uldum")]
+		ULDUM = 1158,
 	}
 }
